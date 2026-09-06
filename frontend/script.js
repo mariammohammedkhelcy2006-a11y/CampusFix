@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = "https://campusfix-ixxc.onrender.com";
 
 const AUTH_TOKEN_KEY = "campusfix_access_token";
 
