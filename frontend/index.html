@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CampusFix helps students report and track campus issues.">
+    <title>CampusFix | Report it. Track it. Fix it.</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container nav-wrap">
+            <a class="brand" href="index.html" aria-label="CampusFix home">
+                <span class="brand-mark">C</span>
+                <span>Campus<span class="brand-accent">Fix</span></span>
+            </a>
+            <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+            <nav id="site-nav" class="site-nav" aria-label="Main navigation">
+                <a class="active" href="index.html">Home</a>
+                <a href="#report-form">Report Issue</a>
+                <a href="reports.html">View Reports</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container hero-grid">
+                <div class="hero-copy">
+                    <p class="eyebrow">A better campus starts with being heard</p>
+                    <h1>Make campus <span>work better</span> for everyone.</h1>
+                    <p class="hero-text">CampusFix gives students a clear, simple way to report everyday campus issues and follow their progress from report to resolution.</p>
+                    <div class="hero-actions">
+                        <a class="button button-primary" href="#report-form">Report an Issue <span aria-hidden="true">&#8594;</span></a>
+                        <a class="button button-light" href="reports.html">View Reports</a>
+                    </div>
+                    <div class="hero-note"><span class="pulse-dot"></span> Built for a more responsive campus community</div>
+                </div>
+                <div class="hero-panel" aria-label="CampusFix issue tracking preview">
+                    <div class="panel-topline"><span>Issue activity</span><span class="live-label">Live overview</span></div>
+                    <div class="activity-total"><strong>128</strong><span>reports this semester</span></div>
+                    <div class="mini-chart" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                    <div class="activity-list">
+                        <div><span class="activity-icon teal">&#9889;</span><span><strong>Library lights</strong><small>Science Block &middot; 2h ago</small></span><b class="status status-progress">In progress</b></div>
+                        <div><span class="activity-icon orange">&#9875;</span><span><strong>Water shortage</strong><small>North Residence &middot; 5h ago</small></span><b class="status status-resolved">Resolved</b></div>
+                        <div><span class="activity-icon blue">&#9888;</span><span><strong>Broken walkway</strong><small>Main Quad &middot; Yesterday</small></span><b class="status status-pending">Pending</b></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section categories-section">
+            <div class="container">
+                <div class="section-heading centered">
+                    <p class="eyebrow">One place for every concern</p>
+                    <h2>What needs attention?</h2>
+                    <p>From a flickering light to a facility that needs care, let the right people know.</p>
+                </div>
+                <div class="category-grid">
+                    <a class="category-card" href="#report-form"><span class="category-icon icon-yellow">&#9889;</span><strong>Electricity</strong><small>Lights, power and wiring</small><span class="card-arrow">&#8594;</span></a>
+                    <a class="category-card" href="#report-form"><span class="category-icon icon-blue">&#9678;</span><strong>Water</strong><small>Supply, leaks and plumbing</small><span class="card-arrow">&#8594;</span></a>
+                    <a class="category-card" href="#report-form"><span class="category-icon icon-coral">&#9874;</span><strong>Facilities</strong><small>Buildings, furniture and spaces</small><span class="card-arrow">&#8594;</span></a>
+                    <a class="category-card" href="#report-form"><span class="category-icon icon-green">&#10003;</span><strong>Sanitation</strong><small>Cleanliness and waste</small><span class="card-arrow">&#8594;</span></a>
+                    <a class="category-card" href="#report-form"><span class="category-icon icon-navy">&#9733;</span><strong>Security</strong><small>Safety and access concerns</small><span class="card-arrow">&#8594;</span></a>
+                    <a class="category-card" href="#report-form"><span class="category-icon icon-purple">&#43;</span><strong>Other</strong><small>Anything else to flag</small><span class="card-arrow">&#8594;</span></a>
+                </div>
+            </div>
+        </section>
+
+        <section class="section process-section">
+            <div class="container process-grid">
+                <div class="section-heading"><p class="eyebrow">Simple by design</p><h2>From noticed to sorted.</h2><p>No complicated forms or chasing updates. CampusFix keeps every issue moving in the right direction.</p></div>
+                <ol class="process-list">
+                    <li><span>01</span><div><h3>Report</h3><p>Tell us what happened and where it happened.</p></div></li>
+                    <li><span>02</span><div><h3>Track</h3><p>See your issue and other campus reports in one place.</p></div></li>
+                    <li><span>03</span><div><h3>Resolve</h3><p>Staff take action and update the status as work progresses.</p></div></li>
+                </ol>
+            </div>
+        </section>
+
+        <section id="report-form" class="section report-section">
+            <div class="container report-grid">
+                <div class="report-intro"><p class="eyebrow">Have something to flag?</p><h2>Help improve your campus.</h2><p>Your report gives campus teams the context they need to act quickly. Share the details and we will take it from there.</p><div class="intro-detail"><span>&#10003;</span><span>Reports are easy to submit and simple to follow.</span></div></div>
+                <form class="issue-form" id="issue-form" novalidate>
+                    <div class="form-heading"><h3>Report an issue</h3><p>All fields are required.</p></div>
+                    <div class="form-group"><label for="issue-title">Issue title</label><input id="issue-title" name="issue-title" type="text" placeholder="e.g. Broken light near the library" required></div>
+                    <div class="form-group"><label for="description">Description</label><textarea id="description" name="description" rows="4" placeholder="Tell us a little more about the issue..." required></textarea></div>
+                    <div class="form-row"><div class="form-group"><label for="category">Category</label><select id="category" name="category" required><option value="">Select category</option><option>Electricity</option><option>Water</option><option>Facilities</option><option>Sanitation</option><option>Security</option><option>Other</option></select></div><div class="form-group"><label for="location">Location</label><input id="location" name="location" type="text" placeholder="e.g. Main Quad" required></div></div>
+                    <div class="form-group"><label for="reporter">Reporter name</label><input id="reporter" name="reporter" type="text" placeholder="Your full name" required></div>
+                    <button class="button button-primary button-full" type="submit">Submit report <span aria-hidden="true">&#8594;</span></button>
+                    <p class="form-message" id="form-message" role="status"></p>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer"><div class="container footer-wrap"><a class="brand brand-footer" href="index.html"><span class="brand-mark">C</span><span>Campus<span class="brand-accent">Fix</span></span></a><p>Report it. Track it. Fix it.</p><span class="footer-copy">&#169; 2025 CampusFix</span></div></footer>
+    <script src="script.js"></script>
+</body>
+</html>

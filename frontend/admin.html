@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="description" content="CampusFix administration dashboard."><title>Admin Dashboard | CampusFix</title><link rel="stylesheet" href="style.css"></head>
+<body>
+    <header class="site-header"><div class="container nav-wrap"><a class="brand" href="index.html" aria-label="CampusFix home"><span class="brand-mark">C</span><span>Campus<span class="brand-accent">Fix</span></span></a><button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button><nav id="site-nav" class="site-nav" aria-label="Main navigation"><a href="index.html">Home</a><a href="index.html#report-form">Report Issue</a><a href="reports.html">View Reports</a></nav></div></header>
+    <main class="admin-page">
+        <section class="page-intro"><div class="container"><p class="eyebrow">Campus operations</p><h1>Admin dashboard</h1><p>Keep track of incoming issues and help move every report toward resolution.</p></div></section>
+        <section class="section admin-section"><div class="container">
+            <div class="stats-grid"><article class="stat-card"><span class="stat-label">Total issues</span><strong id="stat-total">0</strong><small>All submitted reports</small></article><article class="stat-card stat-pending"><span class="stat-label">Pending</span><strong id="stat-pending">0</strong><small>Waiting for action</small></article><article class="stat-card stat-progress"><span class="stat-label">In progress</span><strong id="stat-progress">0</strong><small>Currently being handled</small></article><article class="stat-card stat-resolved"><span class="stat-label">Resolved</span><strong id="stat-resolved">0</strong><small>Closed this semester</small></article></div><div class="admin-table-wrap"><div class="results-heading"><div><p class="eyebrow">Action queue</p><h2>Reported issues</h2></div><span>Latest first</span></div><div class="table-scroll"><table class="admin-table"><thead><tr><th>Issue</th><th>Category</th><th>Location</th><th>Reported by</th><th>Status</th><th>Action</th></tr></thead><tbody id="admin-list"></tbody></table></div></div>
+        </div></section>
+    </main>
+    <footer class="site-footer"><div class="container footer-wrap"><a class="brand brand-footer" href="index.html"><span class="brand-mark">C</span><span>Campus<span class="brand-accent">Fix</span></span></a><p>Report it. Track it. Fix it.</p><span class="footer-copy">&copy; 2025 CampusFix</span></div></footer><script src="script.js"></script>
+</body></html>
