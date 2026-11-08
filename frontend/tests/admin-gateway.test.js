@@ -3,10 +3,11 @@ const { afterEach, test } = require("node:test");
 
 const adminLogin = require("../api/admin/login");
 const adminLogout = require("../api/admin/logout");
-const adminDashboard = require("../api/admin/dashboard");
+const adminDashboard = require("../api/admin/dashboard-page");
 const adminIssues = require("../api/admin/issues");
 const adminIssue = require("../api/admin/issues/[issue_id]");
 const { COOKIE_NAME } = require("../server/admin-session");
+const vercelConfig = require("../vercel.json");
 
 const originalFetch = global.fetch;
 
@@ -43,6 +44,16 @@ function backendResponse(payload, status = 200) {
 function sessionCookie(token = "signed-admin-token") {
 	return `${COOKIE_NAME}=${encodeURIComponent(token)}`;
 }
+
+test("Vercel routes public dashboard URLs through the protected handler", () => {
+	const rewrites = new Map(vercelConfig.rewrites.map(({ source, destination }) => [source, destination]));
+
+	assert.equal(rewrites.get("/control-panel"), "/login.html");
+	assert.equal(rewrites.get("/control-panel/"), "/login.html");
+	assert.equal(rewrites.get("/admin.html"), "/api/admin/dashboard-page");
+	assert.equal(rewrites.get("/admin.html/"), "/api/admin/dashboard-page");
+	assert.equal(rewrites.get("/api/admin/dashboard"), "/api/admin/dashboard-page");
+});
 
 test("admin login establishes an HttpOnly Secure cookie without returning the JWT", async () => {
 	global.fetch = async (url) => {

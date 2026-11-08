@@ -10,11 +10,15 @@
     },
     {
       "source": "/admin.html",
-      "destination": "/api/admin/dashboard"
+      "destination": "/api/admin/dashboard-page"
     },
     {
       "source": "/admin.html/",
-      "destination": "/api/admin/dashboard"
+      "destination": "/api/admin/dashboard-page"
+    },
+    {
+      "source": "/api/admin/dashboard",
+      "destination": "/api/admin/dashboard-page"
     }
   ]
 }

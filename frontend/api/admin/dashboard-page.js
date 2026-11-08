@@ -46,7 +46,7 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
-module.exports = async function adminDashboard(request, response) {
+module.exports = async function adminDashboardPage(request, response) {
 	if (request.method !== "GET") {
 		response.setHeader("Allow", "GET");
 		return sendJson(response, 405, { detail: "Method not allowed" });

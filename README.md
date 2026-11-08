@@ -45,9 +45,9 @@ campus issue-reporting-system/
 For the existing Vercel project, set **Root Directory** to `frontend`. This makes
 `frontend/vercel.json` the project configuration and serves the site's existing
 root-relative CSS and JavaScript assets correctly. `/control-panel` and
-`/control-panel/` rewrite to the admin login page. `/admin.html` rewrites to a
-serverless function that validates the secure admin session before returning
-dashboard HTML.
+`/control-panel/` rewrite to the admin login page. `/admin.html` and the existing
+`/api/admin/dashboard` route rewrite to a uniquely named serverless function that
+validates the secure admin session before returning dashboard HTML.
 
 Set `CAMPUSFIX_API_URL` in the Vercel project environment to the deployed FastAPI
 base URL if it differs from the default configured by the frontend gateway.
