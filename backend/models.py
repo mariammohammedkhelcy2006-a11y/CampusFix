@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -68,6 +69,11 @@ class IssueStatusUpdate(BaseModel):
 
 class ImageUploadResponse(BaseModel):
 	image_url: str
+
+
+class IssueDeleteResponse(BaseModel):
+	deleted: bool
+	image_cleanup: Literal["not_required", "deleted", "shared", "failed"]
 
 
 class LoginRequest(BaseModel):

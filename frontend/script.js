@@ -230,10 +230,26 @@ function createAdminRow(report) {
 	updateButton.className = "update-button";
 	updateButton.type = "button";
 	updateButton.textContent = "Update";
-	actionCell.appendChild(updateButton);
+	const deleteButton = document.createElement("button");
+	deleteButton.className = "delete-button";
+	deleteButton.type = "button";
+	deleteButton.dataset.issueId = String(report.id);
+	deleteButton.setAttribute("aria-label", `Delete ${report.title}`);
+	deleteButton.textContent = "Delete";
+	const actions = document.createElement("div");
+	actions.className = "admin-actions";
+	actions.append(updateButton, deleteButton);
+	actionCell.appendChild(actions);
 
 	row.append(statusCell, actionCell);
 	return row;
+}
+
+function setAdminMessage(message, type = "") {
+	const adminMessage = document.querySelector("#admin-message");
+	if (!adminMessage) return;
+	adminMessage.textContent = message;
+	adminMessage.className = `admin-message ${type}`.trim();
 }
 
 function setPhotoMessage(message) {
@@ -363,8 +379,13 @@ function renderAdminRows() {
 	if (!list) return;
 	list.replaceChildren(...reports.map(createAdminRow));
 	list.onclick = async (event) => {
-		if (!event.target.matches(".update-button")) return;
-		const button = event.target;
+		const button = event.target.closest("button");
+		if (!button) return;
+		if (button.matches(".delete-button")) {
+			await deleteAdminIssue(button);
+			return;
+		}
+		if (!button.matches(".update-button")) return;
 		const select = button.closest("tr").querySelector("select");
 		const issueId = select.dataset.issueId;
 		const reportIndex = reports.findIndex((report) => String(report.id) === issueId);
@@ -397,6 +418,81 @@ function renderAdminRows() {
 	};
 }
 
+async function deleteAdminIssue(button) {
+	const issueId = button.dataset.issueId;
+	const report = reports.find((item) => String(item.id) === issueId);
+	if (!report) {
+		setAdminMessage("This report is no longer available. Refresh the dashboard and try again.", "error");
+		return;
+	}
+	if (!window.confirm(`Delete "${report.title}"? This action cannot be undone.`)) return;
+
+	button.disabled = true;
+	button.textContent = "Deleting...";
+	setAdminMessage("");
+	let deletionConfirmed = false;
+	let responseMessage = "";
+	let cleanupStatus = "not_required";
+	let timeoutId;
+	const controller = new AbortController();
+	try {
+		timeoutId = window.setTimeout(() => controller.abort(), 30000);
+		const response = await apiRequest(`/issues/${issueId}`, {
+			method: "DELETE",
+			signal: controller.signal,
+		});
+		if (!response.ok) {
+			const messages = {
+				401: "Your session has expired. Please sign in again.",
+				403: "Administrator access is required to delete reports.",
+				404: "This report was already deleted or no longer exists.",
+				405: "The server does not currently support report deletion. The backend may need its latest update.",
+			};
+			responseMessage = messages[response.status] || `The report could not be deleted (server error ${response.status}). Please try again.`;
+			throw new Error("Delete request failed");
+		}
+
+		const result = await response.json();
+		if (result.deleted !== true) {
+			throw new Error("The server did not confirm report deletion");
+		}
+
+		deletionConfirmed = true;
+		cleanupStatus = result.image_cleanup || "not_required";
+		reports = reports.filter((item) => String(item.id) !== issueId);
+		renderAdminRows();
+		updateAdminStats(reports);
+	} catch (error) {
+		if (!responseMessage) {
+			responseMessage = error.name === "AbortError"
+				? "The delete request timed out. The server may still be processing it; refresh the dashboard before retrying."
+				: "The delete request could not reach the server. Check that the latest backend is deployed and try again.";
+		}
+	} finally {
+		window.clearTimeout(timeoutId);
+		button.disabled = false;
+		button.textContent = "Delete";
+	}
+
+	if (!deletionConfirmed) {
+		setAdminMessage(responseMessage || "The report could not be deleted. Please try again.", "error");
+		return;
+	}
+
+	const cleanupMessages = {
+		not_required: "Report deleted successfully.",
+		deleted: "Report and its photo deleted successfully.",
+		shared: "Report deleted successfully. Its photo is still used by another report, so it was kept.",
+		failed: "Report deleted, but its photo could not be removed. Please contact an administrator.",
+	};
+	const message = cleanupMessages[cleanupStatus] || "Report deleted successfully.";
+	setAdminMessage(message, cleanupStatus === "failed" ? "error" : "success");
+	const refreshed = await loadAdminIssues();
+	if (!refreshed) {
+		setAdminMessage(`${message} The dashboard could not refresh; reload the page to see the latest reports.`, "error");
+	}
+}
+
 async function isAdmin() {
 	const user = await refreshCurrentUser();
 	return Boolean(user && user.role === "admin");
@@ -405,11 +501,11 @@ async function isAdmin() {
 async function loadAdminIssues() {
 	if (!(await isAdmin())) {
 		window.location.href = "login.html";
-		return;
+		return false;
 	}
 
 	const list = document.querySelector("#admin-list");
-	if (!list) return;
+	if (!list) return false;
 
 	list.replaceChildren(createAdminMessage("Loading issues..."));
 	try {
@@ -419,8 +515,10 @@ async function loadAdminIssues() {
 		reports = issues.map(mapIssue);
 		renderAdminRows();
 		updateAdminStats(issues);
+		return true;
 	} catch (error) {
 		list.replaceChildren(createAdminMessage("Issues are unavailable right now. Please try again later."));
+		return false;
 	}
 }
 

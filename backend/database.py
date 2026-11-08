@@ -7,6 +7,8 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
+import storage
+
 
 ISSUE_COLUMNS = """
 	id,
@@ -142,6 +144,44 @@ def get_issue(issue_id: int) -> dict[str, Any] | None:
 		with connection.cursor() as cursor:
 			cursor.execute(query, (issue_id,))
 			return cursor.fetchone()
+
+
+def delete_issue(issue_id: int) -> dict[str, Any] | None:
+	"""Delete one issue and report whether its image is still referenced."""
+	with get_connection() as connection:
+		with connection.cursor() as cursor:
+			cursor.execute(
+				"SELECT id, image_url FROM issues WHERE id = %s FOR UPDATE",
+				(issue_id,),
+			)
+			issue = cursor.fetchone()
+			if issue is None:
+				return None
+
+			cursor.execute("DELETE FROM issues WHERE id = %s RETURNING id", (issue_id,))
+			if cursor.fetchone() is None:
+				return None
+
+			image_url = issue["image_url"]
+			image_is_shared = False
+			if image_url:
+				public_id = storage.managed_issue_image_public_id(image_url)
+				if public_id:
+					asset_identifier = public_id.rsplit("/", 1)[-1]
+					cursor.execute(
+						"SELECT image_url FROM issues WHERE image_url LIKE %s",
+						(f"%{asset_identifier}%",),
+					)
+					image_is_shared = any(
+						storage.managed_issue_image_public_id(reference["image_url"]) == public_id
+						for reference in cursor.fetchall()
+					)
+
+			return {
+				"id": issue_id,
+				"image_url": image_url,
+				"image_is_shared": image_is_shared,
+			}
 
 
 def update_issue_status(issue_id: int, new_status: str) -> dict[str, Any] | None:

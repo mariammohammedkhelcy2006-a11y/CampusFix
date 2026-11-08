@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import logging
 from pathlib import Path
 
 import psycopg
@@ -11,7 +12,10 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 import database
 import storage
 from auth import create_access_token, get_current_user, require_admin, verify_password
-from models import ImageUploadResponse, IssueCategory, IssueCreate, IssueResponse, IssueStatus, IssueStatusUpdate, LoginRequest, TokenResponse, UserResponse
+from models import ImageUploadResponse, IssueCategory, IssueCreate, IssueDeleteResponse, IssueResponse, IssueStatus, IssueStatusUpdate, LoginRequest, TokenResponse, UserResponse
+
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -44,7 +48,7 @@ app.add_middleware(
         "null",
     ],
     allow_credentials=False,
-    allow_methods=["GET", "POST", "PATCH"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Content-Type", "Authorization"],
 )
 
@@ -129,6 +133,34 @@ def get_issue(issue_id: int) -> IssueResponse:
     if issue is None:
         raise HTTPException(status_code=404, detail="Issue not found")
     return IssueResponse.model_validate(issue)
+
+
+@app.delete("/issues/{issue_id}", response_model=IssueDeleteResponse)
+def delete_issue(
+    issue_id: int,
+    _current_user: dict = Depends(require_admin),
+) -> IssueDeleteResponse:
+    try:
+        deleted_issue = database.delete_issue(issue_id)
+    except (RuntimeError, psycopg.Error):
+        raise HTTPException(status_code=503, detail="Issue deletion is unavailable")
+    if deleted_issue is None:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    image_url = deleted_issue["image_url"]
+    image_cleanup = "not_required"
+    if image_url:
+        if deleted_issue["image_is_shared"]:
+            image_cleanup = "shared"
+        else:
+            try:
+                storage.delete_issue_image(image_url)
+                image_cleanup = "deleted"
+            except (storage.ImageStorageConfigurationError, storage.ImageStorageError):
+                logger.warning("Issue %s was deleted but its image cleanup failed", issue_id)
+                image_cleanup = "failed"
+
+    return IssueDeleteResponse(deleted=True, image_cleanup=image_cleanup)
 
 
 @app.patch("/issues/{issue_id}/status", response_model=IssueResponse)

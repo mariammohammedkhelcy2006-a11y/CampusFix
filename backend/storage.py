@@ -1,6 +1,7 @@
 """Validation and Cloudinary storage for CampusFix issue photographs."""
 
 import os
+import re
 from io import BytesIO
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -108,6 +109,47 @@ def upload_issue_image(image_bytes: bytes, image_format: str) -> str:
     if not isinstance(image_url, str) or not is_cloudinary_image_url(image_url):
         raise ImageStorageError("Image storage returned an invalid URL")
     return image_url
+
+
+def delete_issue_image(image_url: str) -> None:
+    """Delete an image uploaded by CampusFix, refusing unrecognized Cloudinary URLs."""
+    cloud_name, api_key, api_secret = _cloudinary_credentials()
+    public_id = managed_issue_image_public_id(image_url)
+    if public_id is None:
+        raise ImageStorageError("Image URL does not contain a managed upload identifier")
+
+    cloudinary.config(
+        cloud_name=cloud_name,
+        api_key=api_key,
+        api_secret=api_secret,
+        secure=True,
+    )
+    try:
+        result = cloudinary.uploader.destroy(
+            public_id,
+            resource_type="image",
+            invalidate=True,
+        )
+    except (CloudinaryError, OSError) as error:
+        raise ImageStorageError("Image cleanup failed") from error
+
+    if not isinstance(result, dict) or result.get("result") not in {"ok", "not found"}:
+        raise ImageStorageError("Image cleanup failed")
+
+
+def managed_issue_image_public_id(image_url: str) -> str | None:
+    """Return the generated asset ID from any delivery URL for a managed image."""
+    if not is_cloudinary_image_url(image_url):
+        return None
+
+    path_parts = urlparse(image_url).path.strip("/").split("/")[3:]
+    filename_match = re.search(
+        r"(?:^|/)campusfix/issues/([0-9a-f]{32})(?:\.(?:jpg|png|webp))?$",
+        "/".join(path_parts),
+    )
+    if filename_match is None:
+        return None
+    return f"campusfix/issues/{filename_match.group(1)}"
 
 
 def is_cloudinary_image_url(image_url: str) -> bool:
