@@ -15,6 +15,7 @@ ISSUE_COLUMNS = """
 	category,
 	location,
 	reporter_name,
+	image_url,
 	status,
 	created_at
 """
@@ -51,6 +52,7 @@ def initialize_database() -> None:
 			),
 			location TEXT NOT NULL,
 			reporter_name TEXT NOT NULL,
+			image_url TEXT,
 			status TEXT NOT NULL DEFAULT 'Pending' CHECK (
 				status IN ('Pending', 'In Progress', 'Resolved')
 			),
@@ -66,10 +68,12 @@ def initialize_database() -> None:
 			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 		)
 	"""
+	add_image_url_column_sql = "ALTER TABLE issues ADD COLUMN IF NOT EXISTS image_url TEXT"
 	with get_connection() as connection:
 		with connection.cursor() as cursor:
 			cursor.execute(create_table_sql)
 			cursor.execute(create_users_table_sql)
+			cursor.execute(add_image_url_column_sql)
 
 
 def get_user_by_email(email: str) -> dict[str, Any] | None:
@@ -91,8 +95,8 @@ def get_user_by_id(user_id: int) -> dict[str, Any] | None:
 def create_issue(issue_data: dict[str, Any]) -> dict[str, Any]:
 	query = f"""
 		INSERT INTO issues
-			(title, description, category, location, reporter_name)
-		VALUES (%s, %s, %s, %s, %s)
+			(title, description, category, location, reporter_name, image_url)
+		VALUES (%s, %s, %s, %s, %s, %s)
 		RETURNING {ISSUE_COLUMNS}
 	"""
 	values = (
@@ -101,6 +105,7 @@ def create_issue(issue_data: dict[str, Any]) -> dict[str, Any]:
 		issue_data["category"],
 		issue_data["location"],
 		issue_data["reporter_name"],
+		issue_data["image_url"],
 	)
 	with get_connection() as connection:
 		with connection.cursor() as cursor:

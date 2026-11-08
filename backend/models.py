@@ -38,8 +38,16 @@ class IssueCreate(BaseModel):
 	category: IssueCategory
 	location: str = Field(..., min_length=1)
 	reporter_name: str = Field(..., min_length=1)
+	image_url: str | None = Field(default=None, max_length=2048)
 
 	_validate_text = field_validator("title", "description", "location", "reporter_name")(require_text)
+
+	@field_validator("image_url")
+	@classmethod
+	def normalize_image_url(cls, value: str | None) -> str | None:
+		if value is None:
+			return None
+		return value.strip() or None
 
 
 class IssueResponse(BaseModel):
@@ -49,12 +57,17 @@ class IssueResponse(BaseModel):
 	category: IssueCategory
 	location: str
 	reporter_name: str
+	image_url: str | None
 	status: IssueStatus
 	created_at: datetime
 
 
 class IssueStatusUpdate(BaseModel):
 	status: IssueStatus
+
+
+class ImageUploadResponse(BaseModel):
+	image_url: str
 
 
 class LoginRequest(BaseModel):

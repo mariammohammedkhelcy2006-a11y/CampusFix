@@ -3,14 +3,15 @@ from pathlib import Path
 
 import psycopg
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 import database
+import storage
 from auth import create_access_token, get_current_user, require_admin, verify_password
-from models import IssueCategory, IssueCreate, IssueResponse, IssueStatus, IssueStatusUpdate, LoginRequest, TokenResponse, UserResponse
+from models import ImageUploadResponse, IssueCategory, IssueCreate, IssueResponse, IssueStatus, IssueStatusUpdate, LoginRequest, TokenResponse, UserResponse
 
 
 @asynccontextmanager
@@ -73,11 +74,35 @@ def read_current_user(current_user: dict = Depends(get_current_user)) -> UserRes
 
 @app.post("/issues", response_model=IssueResponse, status_code=status.HTTP_201_CREATED)
 def create_issue(issue_data: IssueCreate) -> IssueResponse:
+    if issue_data.image_url and not storage.is_cloudinary_image_url(issue_data.image_url):
+        raise HTTPException(status_code=422, detail="Image URL is invalid")
     try:
         issue = database.create_issue(issue_data.model_dump(mode="json"))
     except (RuntimeError, psycopg.Error):
         raise HTTPException(status_code=503, detail="Database is unavailable")
     return IssueResponse.model_validate(issue)
+
+
+@app.post("/uploads/images", response_model=ImageUploadResponse, status_code=status.HTTP_201_CREATED)
+async def upload_image(file: UploadFile = File(...)) -> ImageUploadResponse:
+    try:
+        image_bytes = await file.read(storage.MAX_IMAGE_BYTES + 1)
+    finally:
+        await file.close()
+
+    try:
+        normalized_image, image_format = storage.validate_and_normalize_image(image_bytes)
+        image_url = storage.upload_issue_image(normalized_image, image_format)
+    except storage.ImageTooLargeError:
+        raise HTTPException(status_code=413, detail="Image files must be 5 MB or smaller")
+    except storage.ImageValidationError as error:
+        raise HTTPException(status_code=422, detail=str(error))
+    except storage.ImageStorageConfigurationError:
+        raise HTTPException(status_code=503, detail="Image uploads are not configured")
+    except storage.ImageStorageError:
+        raise HTTPException(status_code=502, detail="Image upload failed")
+
+    return ImageUploadResponse(image_url=image_url)
 
 
 @app.get("/issues", response_model=list[IssueResponse])
