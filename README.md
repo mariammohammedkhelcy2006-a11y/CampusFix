@@ -32,11 +32,29 @@ campus issue-reporting-system/
   frontend/
     index.html        # Home page and issue submission form
     reports.html      # Public reports listing with filters
-    admin.html        # Admin dashboard
     login.html        # Admin login page
+    admin-dashboard.js # Admin dashboard interactions
+    api/admin/        # Server-side admin session and API gateway
+    server/           # Shared server-side session helpers
     style.css         # Shared CampusFix styles
     script.js         # Frontend logic and API requests
 ```
+
+## Vercel Deployment
+
+For the existing Vercel project, set **Root Directory** to `frontend`. This makes
+`frontend/vercel.json` the project configuration and serves the site's existing
+root-relative CSS and JavaScript assets correctly. `/control-panel` and
+`/control-panel/` rewrite to the admin login page. `/admin.html` rewrites to a
+serverless function that validates the secure admin session before returning
+dashboard HTML.
+
+Set `CAMPUSFIX_API_URL` in the Vercel project environment to the deployed FastAPI
+base URL if it differs from the default configured by the frontend gateway.
+
+The admin login uses a Secure, HttpOnly, SameSite=Lax cookie. Admin report
+requests pass through Vercel functions, which validate the session with the
+backend before proxying to the existing admin-protected API endpoints.
 
 ## Installation
 

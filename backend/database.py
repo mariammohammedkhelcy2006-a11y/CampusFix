@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
@@ -70,11 +71,18 @@ def initialize_database() -> None:
 			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 		)
 	"""
+	create_revoked_tokens_table_sql = """
+		CREATE TABLE IF NOT EXISTS revoked_tokens (
+			token_hash TEXT PRIMARY KEY,
+			expires_at TIMESTAMPTZ NOT NULL
+		)
+	"""
 	add_image_url_column_sql = "ALTER TABLE issues ADD COLUMN IF NOT EXISTS image_url TEXT"
 	with get_connection() as connection:
 		with connection.cursor() as cursor:
 			cursor.execute(create_table_sql)
 			cursor.execute(create_users_table_sql)
+			cursor.execute(create_revoked_tokens_table_sql)
 			cursor.execute(add_image_url_column_sql)
 
 
@@ -92,6 +100,23 @@ def get_user_by_id(user_id: int) -> dict[str, Any] | None:
 		with connection.cursor() as cursor:
 			cursor.execute(query, (user_id,))
 			return cursor.fetchone()
+
+
+def is_access_token_revoked(token_hash: str) -> bool:
+	with get_connection() as connection:
+		with connection.cursor() as cursor:
+			cursor.execute("SELECT 1 FROM revoked_tokens WHERE token_hash = %s", (token_hash,))
+			return cursor.fetchone() is not None
+
+
+def revoke_access_token(token_hash: str, expires_at: datetime) -> None:
+	with get_connection() as connection:
+		with connection.cursor() as cursor:
+			cursor.execute("DELETE FROM revoked_tokens WHERE expires_at <= CURRENT_TIMESTAMP")
+			cursor.execute(
+				"INSERT INTO revoked_tokens (token_hash, expires_at) VALUES (%s, %s) ON CONFLICT (token_hash) DO NOTHING",
+				(token_hash, expires_at),
+			)
 
 
 def create_issue(issue_data: dict[str, Any]) -> dict[str, Any]:

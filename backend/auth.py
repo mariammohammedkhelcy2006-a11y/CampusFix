@@ -1,3 +1,4 @@
+import hashlib
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -29,6 +30,10 @@ def verify_password(password: str, stored_hash: str) -> bool:
 	return password_hash.verify(password, stored_hash)
 
 
+def token_fingerprint(token: str) -> str:
+	return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
 def create_access_token(user: dict[str, Any]) -> str:
 	secret_key = os.getenv("JWT_SECRET_KEY")
 	if not secret_key:
@@ -57,12 +62,28 @@ def get_current_user(
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
 	try:
+		if database.is_access_token_revoked(token_fingerprint(credentials.credentials)):
+			raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 		user = database.get_user_by_id(user_id)
+	except HTTPException:
+		raise
 	except (RuntimeError, psycopg.Error):
 		raise HTTPException(status_code=503, detail="Authentication is unavailable")
 	if user is None:
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 	return user
+
+
+def revoke_access_token(token: str) -> None:
+	secret_key = os.getenv("JWT_SECRET_KEY")
+	if not secret_key:
+		raise RuntimeError("JWT_SECRET_KEY is not configured")
+	try:
+		payload = jwt.decode(token, secret_key, algorithms=["HS256"])
+		expires_at = datetime.fromtimestamp(payload["exp"], timezone.utc)
+	except (jwt.InvalidTokenError, KeyError, TypeError, ValueError):
+		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+	database.revoke_access_token(token_fingerprint(token), expires_at)
 
 
 def require_admin(current_user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:

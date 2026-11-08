@@ -4,14 +4,15 @@ from pathlib import Path
 
 import psycopg
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile, status
+from fastapi import Depends, FastAPI, File, HTTPException, Query, Response, UploadFile, status
+from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 import database
 import storage
-from auth import create_access_token, get_current_user, require_admin, verify_password
+from auth import bearer_scheme, create_access_token, get_current_user, require_admin, revoke_access_token, verify_password
 from models import ImageUploadResponse, IssueCategory, IssueCreate, IssueDeleteResponse, IssueResponse, IssueStatus, IssueStatusUpdate, LoginRequest, TokenResponse, UserResponse
 
 
@@ -52,6 +53,13 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 
+
+@app.get("/admin", include_in_schema=False)
+def admin_guard_redirect() -> Response:
+    response = Response(status_code=status.HTTP_302_FOUND)
+    response.headers["Location"] = "/control-panel"
+    return response
+
 @app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
@@ -74,6 +82,28 @@ def login(login_data: LoginRequest) -> TokenResponse:
 @app.get("/auth/me", response_model=UserResponse)
 def read_current_user(current_user: dict = Depends(get_current_user)) -> UserResponse:
     return UserResponse.model_validate(current_user)
+
+
+@app.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    _current_user: dict = Depends(get_current_user),
+) -> None:
+    if credentials is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    try:
+        revoke_access_token(credentials.credentials)
+    except HTTPException:
+        raise
+    except (RuntimeError, psycopg.Error):
+        raise HTTPException(status_code=503, detail="Logout is unavailable")
+
+
+@app.get("/admin.html", include_in_schema=False)
+def admin_html_guard() -> Response:
+    response = Response(status_code=status.HTTP_302_FOUND)
+    response.headers["Location"] = "/control-panel"
+    return response
 
 
 @app.post("/issues", response_model=IssueResponse, status_code=status.HTTP_201_CREATED)

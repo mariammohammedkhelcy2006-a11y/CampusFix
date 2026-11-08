@@ -501,15 +501,6 @@ h1, h2, h3 { color: #173a68; }
 .site-nav { color: #496b91; }
 .site-nav a, .site-nav a.active { padding-top: 26px; padding-bottom: 23px; }
 .site-nav a:hover, .site-nav a.active { color: #176ee1; border-bottom-color: #3a8bfa; }
-.site-nav a[data-nav="login"] {
-	padding: 9px 16px;
-	border: 1px solid rgba(255, 255, 255, .76);
-	border-radius: 9px;
-	color: #fff;
-	background: linear-gradient(135deg, #378cf0, #176bd1);
-	box-shadow: 0 6px 16px rgba(48, 120, 194, .2), inset 0 1px rgba(255, 255, 255, .32);
-}
-.site-nav a[data-nav="login"]:hover { color: #fff; border-color: #fff; box-shadow: 0 9px 19px rgba(48, 120, 194, .26); }
 .menu-toggle {
 	border-color: rgba(98, 154, 215, .34);
 	color: #276096;

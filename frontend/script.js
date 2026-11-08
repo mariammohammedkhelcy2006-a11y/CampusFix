@@ -52,44 +52,42 @@ async function refreshCurrentUser() {
 	return null;
 }
 
-function updateNavigationAuth() {
+async function updateNavigationAuth() {
 	const nav = document.getElementById("site-nav");
 	if (!nav) return;
 	const authLinks = nav.querySelectorAll(".auth-nav-link");
 	authLinks.forEach((link) => link.remove());
 
-	const existingLogin = nav.querySelector('[data-nav="login"]');
 	const existingLogout = nav.querySelector('[data-nav="logout"]');
-	const existingAdmin = nav.querySelector('[data-nav="admin"]');
 
-	if (existingLogin) existingLogin.remove();
 	if (existingLogout) existingLogout.remove();
-	if (existingAdmin) existingAdmin.remove();
 
-	if (isAuthenticated()) {
-		const adminLink = document.createElement("a");
-		adminLink.setAttribute("data-nav", "admin");
-		adminLink.href = "admin.html";
-		adminLink.textContent = "Admin";
-		nav.appendChild(adminLink);
+	if (!isAuthenticated()) return;
 
-		const logoutLink = document.createElement("a");
-		logoutLink.setAttribute("data-nav", "logout");
-		logoutLink.href = "#";
-		logoutLink.textContent = "Logout";
-		logoutLink.addEventListener("click", (event) => {
-			event.preventDefault();
-			clearAuthToken();
-			window.location.href = "index.html";
-		});
-		nav.appendChild(logoutLink);
-	} else {
-		const loginLink = document.createElement("a");
-		loginLink.setAttribute("data-nav", "login");
-		loginLink.href = "login.html";
-		loginLink.textContent = "Admin Login";
-		nav.appendChild(loginLink);
+	const user = await refreshCurrentUser();
+	if (!user) {
+		clearAuthToken();
+		return;
 	}
+
+	const logoutLink = document.createElement("a");
+	logoutLink.setAttribute("data-nav", "logout");
+	logoutLink.href = "#";
+	logoutLink.textContent = "Logout";
+	logoutLink.addEventListener("click", async (event) => {
+		event.preventDefault();
+		try {
+			const response = await apiRequest("/auth/logout", { method: "POST" });
+			if (!response.ok && response.status !== 401) {
+				throw new Error("Logout could not be confirmed");
+			}
+			clearAuthToken();
+			window.location.href = "/index.html";
+		} catch {
+			window.alert("Secure sign out could not be confirmed. Please try again.");
+		}
+	});
+	nav.appendChild(logoutLink);
 }
 
 let reports = [];
@@ -500,7 +498,7 @@ async function isAdmin() {
 
 async function loadAdminIssues() {
 	if (!(await isAdmin())) {
-		window.location.href = "login.html";
+		window.location.href = "/control-panel";
 		return false;
 	}
 
@@ -543,13 +541,21 @@ function updateAdminStats(issues) {
 	if (resolvedEl) resolvedEl.textContent = String(resolved);
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
 	const menuToggle = document.querySelector(".menu-toggle");
 	const siteNav = document.querySelector(".site-nav");
 	if (menuToggle) menuToggle.addEventListener("click", () => { const isOpen = siteNav.classList.toggle("open"); menuToggle.setAttribute("aria-expanded", isOpen); });
 	document.querySelectorAll(".site-nav a").forEach((link) => link.addEventListener("click", () => siteNav?.classList.remove("open")));
 
-	updateNavigationAuth();
+	await updateNavigationAuth();
+
+	if (window.location.pathname.endsWith("admin.html") || window.location.pathname.endsWith("/admin.html")) {
+		const user = await refreshCurrentUser();
+		if (!user || user.role !== "admin") {
+			window.location.href = "/control-panel";
+			return;
+		}
+	}
 
 	document.querySelectorAll(".category-card[data-category]").forEach((card) => {
 		card.addEventListener("click", () => {
@@ -576,21 +582,22 @@ document.addEventListener("DOMContentLoaded", () => {
 			};
 
 			try {
-				const response = await apiRequest("/auth/login", {
+				const response = await fetch("/api/admin/login", {
 					method: "POST",
+					credentials: "same-origin",
+					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify(payload),
 				});
 
 				if (response.ok) {
-					const data = await response.json();
-					setAuthToken(data.access_token);
-					updateNavigationAuth();
-					window.location.href = "admin.html";
+					window.location.href = "/admin.html";
 					return;
 				}
 
 				if (response.status === 401) {
 					message.textContent = "Invalid email or password.";
+				} else if (response.status === 403) {
+					message.textContent = "This account does not have administrator access.";
 				} else if (response.status === 503) {
 					message.textContent = "Authentication is temporarily unavailable. Please try again shortly.";
 				} else {

@@ -1,0 +1,20 @@
+{
+  "rewrites": [
+    {
+      "source": "/control-panel",
+      "destination": "/login.html"
+    },
+    {
+      "source": "/control-panel/",
+      "destination": "/login.html"
+    },
+    {
+      "source": "/admin.html",
+      "destination": "/api/admin/dashboard"
+    },
+    {
+      "source": "/admin.html/",
+      "destination": "/api/admin/dashboard"
+    }
+  ]
+}

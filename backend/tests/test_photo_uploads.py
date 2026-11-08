@@ -7,9 +7,12 @@ from unittest import mock
 
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from fastapi.security import HTTPAuthorizationCredentials
 from PIL import Image
+import psycopg
 from starlette.datastructures import Headers, UploadFile
 
+import auth
 import database
 import main
 import storage
@@ -114,6 +117,23 @@ class IssueImageIntegrationTests(unittest.TestCase):
         self.assertIsNone(response.image_url)
         self.assertIsNone(create_issue.call_args.args[0]["image_url"])
 
+    def test_report_submission_http_endpoint_works_without_an_image(self):
+        payload = {
+            "title": self.issue["title"],
+            "description": self.issue["description"],
+            "category": self.issue["category"],
+            "location": self.issue["location"],
+            "reporter_name": self.issue["reporter_name"],
+        }
+        with mock.patch.object(main.database, "initialize_database"):
+            with mock.patch.object(main.database, "create_issue", return_value=self.issue) as create_issue:
+                with TestClient(main.app) as client:
+                    response = client.post("/issues", json=payload)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertIsNone(response.json()["image_url"])
+        self.assertIsNone(create_issue.call_args.args[0]["image_url"])
+
     def test_report_submission_with_a_cloudinary_image_url_is_stored(self):
         image_url = "https://res.cloudinary.com/campusfix-test/image/upload/v1/campusfix/issues/photo.jpg"
         issue_with_image = {**self.issue, "image_url": image_url}
@@ -134,6 +154,30 @@ class IssueImageIntegrationTests(unittest.TestCase):
         with mock.patch.object(main.database, "get_issues", return_value=[issue_with_image]):
             responses = main.list_issues(category=None, status_filter=None)
         self.assertEqual(responses[0].image_url, image_url)
+
+    def test_public_report_filtering_uses_requested_category_and_status(self):
+        with mock.patch.object(main.database, "initialize_database"):
+            with mock.patch.object(main.database, "get_issues", return_value=[self.issue]) as get_issues:
+                with TestClient(main.app) as client:
+                    response = client.get("/issues?category=Electricity&status=Pending")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()[0]["id"], self.issue["id"])
+        get_issues.assert_called_once_with(category="Electricity", status="Pending")
+
+    def test_image_upload_http_endpoint_accepts_valid_image(self):
+        expected_url = "https://res.cloudinary.com/campusfix-test/image/upload/v1/campusfix/issues/generated.jpg"
+        with mock.patch.object(main.database, "initialize_database"):
+            with mock.patch.object(storage, "upload_issue_image", return_value=expected_url) as upload:
+                with TestClient(main.app) as client:
+                    response = client.post(
+                        "/uploads/images",
+                        files={"file": ("untrusted.jpg", make_image_bytes("JPEG"), "image/jpeg")},
+                    )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json(), {"image_url": expected_url})
+        upload.assert_called_once()
 
     def test_non_cloudinary_image_url_is_rejected(self):
         with mock.patch.dict(os.environ, {"CLOUDINARY_CLOUD_NAME": "campusfix-test"}, clear=False):
@@ -169,6 +213,138 @@ class IssueImageIntegrationTests(unittest.TestCase):
             database.initialize_database()
 
         self.assertIn("ALTER TABLE issues ADD COLUMN IF NOT EXISTS image_url TEXT", executed_statements)
+        self.assertTrue(any("CREATE TABLE IF NOT EXISTS revoked_tokens" in statement for statement in executed_statements))
+
+
+class TokenRevocationTests(unittest.TestCase):
+    def test_existing_admin_can_log_in_and_read_current_user(self):
+        test_secret = "test-secret-for-token-revocation-tests-32"
+        admin = {
+            "id": 1,
+            "email": "admin@example.test",
+            "password_hash": "stored-hash",
+            "role": "admin",
+            "created_at": datetime.now(timezone.utc),
+        }
+        with mock.patch.dict(os.environ, {"JWT_SECRET_KEY": test_secret}, clear=False):
+            with mock.patch.object(main.database, "initialize_database"):
+                with mock.patch.object(database, "get_user_by_email", return_value=admin):
+                    with mock.patch.object(main, "verify_password", return_value=True):
+                        with mock.patch.object(database, "is_access_token_revoked", return_value=False):
+                            with mock.patch.object(database, "get_user_by_id", return_value=admin):
+                                with TestClient(main.app) as client:
+                                    login_response = client.post(
+                                        "/auth/login",
+                                        json={"email": admin["email"], "password": "valid-password"},
+                                    )
+                                    self.assertEqual(login_response.status_code, 200)
+                                    token = login_response.json()["access_token"]
+                                    user_response = client.get(
+                                        "/auth/me",
+                                        headers={"Authorization": f"Bearer {token}"},
+                                    )
+
+        self.assertEqual(user_response.status_code, 200)
+        self.assertEqual(user_response.json()["role"], "admin")
+
+    def test_ordinary_user_can_still_log_in(self):
+        student = {
+            "id": 9,
+            "email": "student@example.test",
+            "password_hash": "stored-hash",
+            "role": "student",
+        }
+        with mock.patch.object(main.database, "initialize_database"):
+            with mock.patch.object(main.database, "get_user_by_email", return_value=student):
+                with mock.patch.object(main, "verify_password", return_value=True):
+                    with mock.patch.object(main, "create_access_token", return_value="student-token"):
+                        with TestClient(main.app) as client:
+                            response = client.post(
+                                "/auth/login",
+                                json={"email": "student@example.test", "password": "valid-password"},
+                            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["access_token"], "student-token")
+
+    def test_revoked_token_is_rejected_before_user_lookup(self):
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="signed-token")
+        test_secret = "test-secret-for-token-revocation-tests-32"
+        with mock.patch.dict(os.environ, {"JWT_SECRET_KEY": test_secret}, clear=False):
+            with mock.patch.object(auth.jwt, "decode", return_value={"sub": "7"}):
+                with mock.patch.object(database, "is_access_token_revoked", return_value=True):
+                    with mock.patch.object(database, "get_user_by_id") as get_user:
+                        with self.assertRaises(HTTPException) as raised:
+                            auth.get_current_user(credentials)
+
+        self.assertEqual(raised.exception.status_code, 401)
+        get_user.assert_not_called()
+
+    def test_logout_revokes_token_and_protected_endpoint_rejects_it(self):
+        user = {"id": 7, "email": "admin@example.test", "role": "admin"}
+        test_secret = "test-secret-for-token-revocation-tests-32"
+        with mock.patch.dict(os.environ, {"JWT_SECRET_KEY": test_secret}, clear=False):
+            with mock.patch.object(main.database, "initialize_database"):
+                with mock.patch.object(database, "is_access_token_revoked", return_value=False):
+                    with mock.patch.object(database, "get_user_by_id", return_value=user):
+                        with mock.patch.object(database, "revoke_access_token") as revoke:
+                            with TestClient(main.app) as client:
+                                token = auth.create_access_token(user)
+                                response = client.post("/auth/logout", headers={"Authorization": f"Bearer {token}"})
+
+        self.assertEqual(response.status_code, 204)
+        revoke.assert_called_once()
+        token_hash, expires_at = revoke.call_args.args
+        self.assertEqual(token_hash, auth.token_fingerprint(token))
+        self.assertIsNotNone(expires_at)
+
+        with mock.patch.dict(os.environ, {"JWT_SECRET_KEY": test_secret}, clear=False):
+            with mock.patch.object(main.database, "initialize_database"):
+                with mock.patch.object(database, "is_access_token_revoked", return_value=True):
+                    with mock.patch.object(database, "get_user_by_id") as get_user:
+                        with TestClient(main.app) as client:
+                            response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+
+        self.assertEqual(response.status_code, 401)
+        get_user.assert_not_called()
+
+    def test_revoked_token_is_rejected_by_all_authenticated_endpoints(self):
+        test_secret = "test-secret-for-token-revocation-tests-32"
+        token = auth.jwt.encode(
+            {"sub": "7", "exp": datetime(2099, 1, 1, tzinfo=timezone.utc)},
+            test_secret,
+            algorithm="HS256",
+        )
+        headers = {"Authorization": f"Bearer {token}"}
+        with mock.patch.dict(os.environ, {"JWT_SECRET_KEY": test_secret}, clear=False):
+            with mock.patch.object(main.database, "initialize_database"):
+                with mock.patch.object(database, "is_access_token_revoked", return_value=True):
+                    with mock.patch.object(database, "get_user_by_id") as get_user:
+                        with TestClient(main.app) as client:
+                            responses = [
+                                client.get("/auth/me", headers=headers),
+                                client.post("/auth/logout", headers=headers),
+                                client.delete("/issues/10", headers=headers),
+                                client.patch("/issues/10/status", headers=headers, json={"status": "Resolved"}),
+                            ]
+
+        self.assertEqual([response.status_code for response in responses], [401, 401, 401, 401])
+        get_user.assert_not_called()
+
+    def test_revocation_database_errors_fail_closed(self):
+        test_secret = "test-secret-for-token-revocation-tests-32"
+        token = auth.jwt.encode(
+            {"sub": "7", "exp": datetime(2099, 1, 1, tzinfo=timezone.utc)},
+            test_secret,
+            algorithm="HS256",
+        )
+        with mock.patch.dict(os.environ, {"JWT_SECRET_KEY": test_secret}, clear=False):
+            with mock.patch.object(main.database, "initialize_database"):
+                with mock.patch.object(database, "is_access_token_revoked", side_effect=psycopg.OperationalError("database unavailable")):
+                    with TestClient(main.app) as client:
+                        response = client.delete("/issues/10", headers={"Authorization": f"Bearer {token}"})
+
+        self.assertEqual(response.status_code, 503)
 
 
 class CloudinaryStorageTests(unittest.TestCase):
@@ -356,6 +532,83 @@ class IssueDeletionEndpointTests(unittest.TestCase):
         main.app.dependency_overrides[main.get_current_user] = lambda: {"id": 2, "role": "student"}
         response = self.client.delete("/issues/10")
         self.assertEqual(response.status_code, 403)
+
+    def test_missing_invalid_and_expired_tokens_cannot_call_admin_endpoints(self):
+        test_secret = "test-secret-for-token-revocation-tests-32"
+        expired_token = auth.jwt.encode(
+            {"sub": "1", "exp": datetime(2000, 1, 1, tzinfo=timezone.utc)},
+            test_secret,
+            algorithm="HS256",
+        )
+        with mock.patch.dict(os.environ, {"JWT_SECRET_KEY": test_secret}, clear=False):
+            for path, method in (("/issues/10", "delete"), ("/issues/10/status", "patch")):
+                for token in (None, "not-a-valid-token", expired_token):
+                    with self.subTest(path=path, method=method, token_type=token):
+                        headers = {"Authorization": f"Bearer {token}"} if token else {}
+                        response = self.client.request(
+                            method.upper(),
+                            path,
+                            headers=headers,
+                            json={"status": "Resolved"} if method == "patch" else None,
+                        )
+                        self.assertEqual(response.status_code, 401)
+
+    def test_student_token_cannot_update_or_delete_reports(self):
+        test_secret = "test-secret-for-token-revocation-tests-32"
+        student = {"id": 2, "email": "student@example.test", "role": "student"}
+        with mock.patch.dict(os.environ, {"JWT_SECRET_KEY": test_secret}, clear=False):
+            token = auth.create_access_token(student)
+            with mock.patch.object(database, "is_access_token_revoked", return_value=False):
+                with mock.patch.object(database, "get_user_by_id", return_value=student):
+                    delete_response = self.client.delete(
+                        "/issues/10",
+                        headers={"Authorization": f"Bearer {token}"},
+                    )
+                    status_response = self.client.patch(
+                        "/issues/10/status",
+                        headers={"Authorization": f"Bearer {token}"},
+                        json={"status": "Resolved"},
+                    )
+
+        self.assertEqual(delete_response.status_code, 403)
+        self.assertEqual(status_response.status_code, 403)
+
+    def test_authenticated_admin_token_can_update_and_delete_safe_test_reports(self):
+        test_secret = "test-secret-for-token-revocation-tests-32"
+        admin = {"id": 1, "email": "admin@example.test", "role": "admin"}
+        issue = {
+            "id": 10,
+            "title": "Test issue",
+            "description": "Safe test fixture",
+            "category": "Electricity",
+            "location": "Test location",
+            "reporter_name": "Test user",
+            "image_url": None,
+            "status": "Resolved",
+            "created_at": datetime.now(timezone.utc),
+        }
+        with mock.patch.dict(os.environ, {"JWT_SECRET_KEY": test_secret}, clear=False):
+            token = auth.create_access_token(admin)
+            headers = {"Authorization": f"Bearer {token}"}
+            with mock.patch.object(database, "is_access_token_revoked", return_value=False):
+                with mock.patch.object(database, "get_user_by_id", return_value=admin):
+                    with mock.patch.object(database, "update_issue_status", return_value=issue):
+                        with mock.patch.object(
+                            database,
+                            "delete_issue",
+                            return_value={"id": 10, "image_url": None, "image_is_shared": False},
+                        ):
+                            status_response = self.client.patch(
+                                "/issues/10/status",
+                                headers=headers,
+                                json={"status": "Resolved"},
+                            )
+                            delete_response = self.client.delete("/issues/10", headers=headers)
+
+        self.assertEqual(status_response.status_code, 200)
+        self.assertEqual(status_response.json()["status"], "Resolved")
+        self.assertEqual(delete_response.status_code, 200)
+        self.assertEqual(delete_response.json()["deleted"], True)
 
     def test_admin_can_delete_one_report_and_its_image(self):
         self.allow_admin()
