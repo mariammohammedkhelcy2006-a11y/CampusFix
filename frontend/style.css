@@ -974,3 +974,9 @@ h1, h2, h3 { color: #173a68; }
 	object-fit: cover;
 	object-position: center;
 }
+.category-icon.other-photo {
+	display: block;
+	padding: 0;
+	object-fit: cover;
+	object-position: center;
+}
