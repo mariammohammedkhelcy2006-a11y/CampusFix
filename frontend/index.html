@@ -11,10 +11,10 @@
     <header class="site-header">
         <div class="container nav-wrap">
             <a class="brand" href="index.html" aria-label="CampusFix home">
-                <span class="brand-mark">C</span>
+                <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m2 11 14-7 14 7-14 7L2 11Z"/><path d="M8 14v7c4 3 12 3 16 0v-7"/><path d="M29 12v8"/></svg></span>
                 <span>Campus<span class="brand-accent">Fix</span></span>
             </a>
-            <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+            <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav">Menu</button>
             <nav id="site-nav" class="site-nav" aria-label="Main navigation">
                 <a class="active" href="index.html">Home</a>
                 <a href="#report-form">Report Issue</a>
@@ -25,45 +25,71 @@
 
     <main>
         <section class="hero">
+            <img class="hero-photo" src="ucc-campus-hero.jpeg" alt="" aria-hidden="true">
             <div class="container hero-grid">
                 <div class="hero-copy">
-                    <p class="eyebrow">A better campus starts with being heard</p>
-                    <h1>Make campus <span>work better</span> for everyone.</h1>
-                    <p class="hero-text">CampusFix gives students a clear, simple way to report everyday campus issues and follow their progress from report to resolution.</p>
+                    <p class="eyebrow">Your voice makes a difference</p>
+                    <h1>A Cleaner, Safer, Better Campus for Everyone</h1>
+                    <p class="hero-text">Report campus issues, track their progress, and help make your campus a better place.</p>
                     <div class="hero-actions">
                         <a class="button button-primary" href="#report-form">Report an Issue <span aria-hidden="true">&#8594;</span></a>
                         <a class="button button-light" href="reports.html">View Reports</a>
                     </div>
-                    <div class="hero-note"><span class="pulse-dot"></span> Built for a more responsive campus community</div>
                 </div>
-                <div class="hero-panel" aria-label="CampusFix issue tracking preview">
-                    <div class="panel-topline"><span>Issue activity</span><span class="live-label">Live overview</span></div>
-                    <div class="activity-total"><strong>128</strong><span>reports this semester</span></div>
-                    <div class="mini-chart" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-                    <div class="activity-list">
-                        <div><span class="activity-icon teal">&#9889;</span><span><strong>Library lights</strong><small>Science Block &middot; 2h ago</small></span><b class="status status-progress">In progress</b></div>
-                        <div><span class="activity-icon orange">&#9875;</span><span><strong>Water shortage</strong><small>North Residence &middot; 5h ago</small></span><b class="status status-resolved">Resolved</b></div>
-                        <div><span class="activity-icon blue">&#9888;</span><span><strong>Broken walkway</strong><small>Main Quad &middot; Yesterday</small></span><b class="status status-pending">Pending</b></div>
-                    </div>
-                </div>
+            </div>
+        </section>
+
+        <section class="feature-strip" aria-label="How CampusFix helps">
+            <div class="container feature-grid">
+                <article class="feature-item">
+                    <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M5 10h5l2-3h8l2 3h5v15H5z"/><circle cx="16" cy="17" r="5"/></svg></span>
+                    <h2>Report Issues</h2>
+                    <p>Share what you see with a photo (optional).</p>
+                </article>
+                <article class="feature-item">
+                    <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="14" cy="14" r="9"/><path d="m21 21 7 7"/></svg></span>
+                    <h2>Track Progress</h2>
+                    <p>See real-time updates on your reports.</p>
+                </article>
+                <article class="feature-item">
+                    <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="11" cy="11" r="4"/><circle cx="22" cy="12" r="3"/><path d="M3 26c0-5 3-8 8-8s8 3 8 8M19 19c5-2 10 1 10 6"/></svg></span>
+                    <h2>Build a Better Campus</h2>
+                    <p>Together we can make a difference.</p>
+                </article>
             </div>
         </section>
 
         <section class="section categories-section">
             <div class="container">
                 <div class="section-heading centered">
-                    <p class="eyebrow">One place for every concern</p>
+                    <p class="eyebrow">Make your report count</p>
                     <h2>What needs attention?</h2>
-                    <p>From a flickering light to a facility that needs care, let the right people know.</p>
+                    <p>Choose a category to start a report and help the right campus team respond.</p>
                 </div>
                 <div class="category-grid">
-                    <a class="category-card" href="#report-form"><span class="category-icon icon-yellow">&#9889;</span><strong>Electricity</strong><small>Lights, power and wiring</small><span class="card-arrow">&#8594;</span></a>
-                    <a class="category-card" href="#report-form"><span class="category-icon icon-blue">&#9678;</span><strong>Water</strong><small>Supply, leaks and plumbing</small><span class="card-arrow">&#8594;</span></a>
-                    <a class="category-card" href="#report-form"><span class="category-icon icon-coral">&#9874;</span><strong>Facilities</strong><small>Buildings, furniture and spaces</small><span class="card-arrow">&#8594;</span></a>
-                    <a class="category-card" href="#report-form"><span class="category-icon icon-green">&#10003;</span><strong>Sanitation</strong><small>Cleanliness and waste</small><span class="card-arrow">&#8594;</span></a>
-                    <a class="category-card" href="#report-form"><span class="category-icon icon-navy">&#9733;</span><strong>Security</strong><small>Safety and access concerns</small><span class="card-arrow">&#8594;</span></a>
-                    <a class="category-card" href="#report-form"><span class="category-icon icon-purple">&#43;</span><strong>Other</strong><small>Anything else to flag</small><span class="card-arrow">&#8594;</span></a>
+                    <a class="category-card" data-category="Electricity" href="#report-form"><img class="category-photo" src="category-electricity.jpg" alt="Campus walkway streetlight"><strong>Electricity</strong><small>Lights, power and wiring</small><span class="card-arrow" aria-hidden="true">&#8594;</span></a>
+                    <a class="category-card" data-category="Water" href="#report-form"><img class="category-photo" src="category-water.jpg" alt="Campus water fountain"><strong>Water</strong><small>Supply, leaks and plumbing</small><span class="card-arrow" aria-hidden="true">&#8594;</span></a>
+                    <a class="category-card" data-category="Facilities" href="#report-form"><img class="category-photo" src="category-facilities.jpg" alt="Campus bench needing repair"><strong>Facilities</strong><small>Buildings, furniture and spaces</small><span class="card-arrow" aria-hidden="true">&#8594;</span></a>
+                    <a class="category-card" data-category="Sanitation" href="#report-form"><img class="category-photo" src="category-sanitation.jpg" alt="Overflowing campus waste bins"><strong>Sanitation</strong><small>Cleanliness and waste</small><span class="card-arrow" aria-hidden="true">&#8594;</span></a>
+                    <a class="category-card" data-category="Security" href="#report-form"><img class="category-icon security-photo" src="security-campus.jpeg" alt="Campus security cameras and gated entrance"><strong>Security</strong><small>Safety and access concerns</small><span class="card-arrow" aria-hidden="true">&#8594;</span></a>
+                    <a class="category-card" data-category="Other" href="#report-form"><span class="category-icon icon-purple" aria-hidden="true">&#43;</span><strong>Others</strong><small>Anything else to flag</small><span class="card-arrow" aria-hidden="true">&#8594;</span></a>
                 </div>
+            </div>
+        </section>
+
+        <section class="section home-reports-section">
+            <div class="container">
+                <div class="home-reports-heading">
+                    <div class="section-heading">
+                        <p class="eyebrow">Community updates</p>
+                        <h2>Recent Reports</h2>
+                        <p>See the latest issues reported by students across campus.</p>
+                    </div>
+                    <a class="text-link" href="reports.html">View all reports <span aria-hidden="true">&#8594;</span></a>
+                </div>
+                <div id="reports-list" class="reports-list" data-limit="3"></div>
+                <p id="results-count" class="home-reports-count" aria-live="polite"></p>
+                <p id="empty-reports" class="empty-state" hidden>No reports have been submitted yet.</p>
             </div>
         </section>
 
@@ -85,8 +111,18 @@
                     <div class="form-heading"><h3>Report an issue</h3><p>All fields are required.</p></div>
                     <div class="form-group"><label for="issue-title">Issue title</label><input id="issue-title" name="issue-title" type="text" placeholder="e.g. Broken light near the library" required></div>
                     <div class="form-group"><label for="description">Description</label><textarea id="description" name="description" rows="4" placeholder="Tell us a little more about the issue..." required></textarea></div>
-                    <div class="form-row"><div class="form-group"><label for="category">Category</label><select id="category" name="category" required><option value="">Select category</option><option>Electricity</option><option>Water</option><option>Facilities</option><option>Sanitation</option><option>Security</option><option>Other</option></select></div><div class="form-group"><label for="location">Location</label><input id="location" name="location" type="text" placeholder="e.g. Main Quad" required></div></div>
+                    <div class="form-row"><div class="form-group"><label for="category">Category</label><select id="category" name="category" required><option value="">Select category</option><option>Electricity</option><option>Water</option><option>Facilities</option><option>Sanitation</option><option>Security</option><option value="Other">Others</option></select></div><div class="form-group"><label for="location">Location</label><input id="location" name="location" type="text" placeholder="e.g. Main Quad" required></div></div>
                     <div class="form-group"><label for="reporter">Reporter name</label><input id="reporter" name="reporter" type="text" placeholder="Your full name" required></div>
+                    <div class="form-group photo-upload-group">
+                        <label for="issue-photo">Photo <span class="optional-label">Optional</span></label>
+                        <input id="issue-photo" name="issue-photo" type="file" accept="image/jpeg,image/png,image/webp">
+                        <p class="photo-upload-help">JPEG, PNG, or WEBP. Maximum file size: 5 MB.</p>
+                        <p class="photo-message" id="photo-message" role="status"></p>
+                        <div class="photo-preview" id="photo-preview" hidden>
+                            <img id="photo-preview-image" alt="Selected issue photo preview">
+                            <button class="photo-remove" id="remove-photo" type="button">Remove photo</button>
+                        </div>
+                    </div>
                     <button class="button button-primary button-full" type="submit">Submit report <span aria-hidden="true">&#8594;</span></button>
                     <p class="form-message" id="form-message" role="status"></p>
                 </form>
@@ -94,7 +130,7 @@
         </section>
     </main>
 
-    <footer class="site-footer"><div class="container footer-wrap"><a class="brand brand-footer" href="index.html"><span class="brand-mark">C</span><span>Campus<span class="brand-accent">Fix</span></span></a><p>Report it. Track it. Fix it.</p><span class="footer-copy">&#169; 2025 CampusFix</span></div></footer>
+    <footer class="site-footer"><div class="container footer-wrap"><a class="brand brand-footer" href="index.html"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m2 11 14-7 14 7-14 7L2 11Z"/><path d="M8 14v7c4 3 12 3 16 0v-7"/><path d="M29 12v8"/></svg></span><span>Campus<span class="brand-accent">Fix</span></span></a><p>Report it. Track it. Fix it.</p><span class="footer-copy">&#169; 2026 CampusFix</span></div></footer>
     <script src="script.js"></script>
 </body>
 </html>

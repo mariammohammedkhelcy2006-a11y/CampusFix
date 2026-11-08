@@ -5,6 +5,7 @@ A full-stack web application for reporting and managing campus issues. Students 
 ## Main Features
 
 - Student issue submission with title, description, category, location, and reporter name
+- Optional JPEG, PNG, and WEBP issue photos stored in Cloudinary
 - Public reports listing with search, category, and status filters
 - Admin authentication with JWT-based login
 - Admin dashboard with issue stats and status updates
@@ -54,8 +55,9 @@ pip install -r requirements.txt
 
 - `DATABASE_URL`: your Neon PostgreSQL connection string
 - `JWT_SECRET_KEY`: a strong random secret for JWT signing
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET`: credentials from your Cloudinary account, required for photo uploads
 
-Do not commit `.env` to version control.
+Do not commit `.env` to version control. Photo uploads return a temporary service-unavailable response until all three Cloudinary variables are configured in the backend environment.
 
 ## Starting the Backend
 
@@ -95,6 +97,7 @@ You will be prompted to enter an admin email and password. The password is never
 - `POST /auth/login` - Admin login, returns JWT
 - `GET /auth/me` - Get current authenticated user
 - `POST /issues` - Submit a new issue (public)
+- `POST /uploads/images` - Validate and store a JPEG, PNG, or WEBP photograph (maximum 5 MB)
 - `GET /issues` - List all issues (public)
 - `GET /issues/{id}` - Get a single issue (public)
 - `PATCH /issues/{id}/status` - Update issue status (admin only)

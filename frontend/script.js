@@ -1,6 +1,8 @@
 const API_BASE_URL = "https://campusfix-ixxc.onrender.com";
 
 const AUTH_TOKEN_KEY = "campusfix_access_token";
+const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 function getAuthToken() {
 	return sessionStorage.getItem(AUTH_TOKEN_KEY);
@@ -91,6 +93,8 @@ function updateNavigationAuth() {
 }
 
 let reports = [];
+let selectedPhotoFile = null;
+let selectedPhotoPreviewUrl = null;
 
 function statusClass(status) {
 	return status.toLowerCase().replace(" ", "-");
@@ -109,26 +113,222 @@ function mapIssue(issue) {
 		category: issue.category,
 		location: issue.location,
 		reporter: issue.reporter_name,
+		image_url: issue.image_url,
 		status: issue.status,
 		created_at: issue.created_at
 	};
+}
+
+function createIssueImage(imageUrl, altText, className) {
+	if (!imageUrl) return null;
+
+	let parsedUrl;
+	try {
+		parsedUrl = new URL(imageUrl);
+	} catch {
+		return null;
+	}
+	if (parsedUrl.protocol !== "https:" || parsedUrl.hostname !== "res.cloudinary.com") return null;
+
+	const image = document.createElement("img");
+	image.className = className;
+	image.src = imageUrl;
+	image.alt = altText;
+	image.loading = "lazy";
+	image.referrerPolicy = "no-referrer";
+	image.addEventListener("error", () => image.remove());
+	return image;
+}
+
+function createStatusBadge(status) {
+	const badge = document.createElement("span");
+	badge.classList.add("status", `status-${statusClass(status)}`);
+	badge.textContent = status;
+	return badge;
+}
+
+function createReportCard(report) {
+	const card = document.createElement("article");
+	card.className = "report-card";
+
+	const cardTop = document.createElement("div");
+	cardTop.className = "report-card-top";
+	const title = document.createElement("h3");
+	title.textContent = report.title;
+	cardTop.append(title, createStatusBadge(report.status));
+
+	const description = document.createElement("p");
+	description.textContent = report.description;
+	const issueImage = createIssueImage(report.image_url, `Photo for ${report.title}`, "report-image");
+
+	const meta = document.createElement("div");
+	meta.className = "report-meta";
+	const category = document.createElement("span");
+	const categoryLabel = document.createElement("strong");
+	categoryLabel.textContent = report.category;
+	category.appendChild(categoryLabel);
+	const location = document.createElement("span");
+	location.textContent = report.location;
+	const reporter = document.createElement("span");
+	reporter.textContent = `By ${report.reporter}`;
+	const date = document.createElement("span");
+	date.textContent = formatReportDate(report);
+	meta.append(category, location, reporter, date);
+
+	card.append(cardTop);
+	if (issueImage) card.appendChild(issueImage);
+	card.append(description, meta);
+	return card;
+}
+
+function createAdminMessage(message) {
+	const row = document.createElement("tr");
+	const cell = document.createElement("td");
+	cell.colSpan = 6;
+	cell.textContent = message;
+	row.appendChild(cell);
+	return row;
+}
+
+function createAdminRow(report) {
+	const row = document.createElement("tr");
+	const titleCell = document.createElement("td");
+	const issueImage = createIssueImage(report.image_url, `Photo for ${report.title}`, "admin-issue-image");
+	if (issueImage) {
+		const summary = document.createElement("div");
+		summary.className = "admin-issue-summary";
+		const title = document.createElement("span");
+		title.textContent = report.title;
+		summary.append(issueImage, title);
+		titleCell.appendChild(summary);
+	} else {
+		titleCell.textContent = report.title;
+	}
+	row.appendChild(titleCell);
+
+	[report.category, report.location, report.reporter].forEach((value) => {
+		const cell = document.createElement("td");
+		cell.textContent = value;
+		row.appendChild(cell);
+	});
+
+	const statusCell = document.createElement("td");
+	const select = document.createElement("select");
+	select.setAttribute("aria-label", `Status for ${report.title}`);
+	select.dataset.issueId = String(report.id);
+	["Pending", "In Progress", "Resolved"].forEach((status) => {
+		const option = document.createElement("option");
+		option.value = status;
+		option.textContent = status;
+		option.selected = report.status === status;
+		select.appendChild(option);
+	});
+	statusCell.appendChild(select);
+
+	const actionCell = document.createElement("td");
+	const updateButton = document.createElement("button");
+	updateButton.className = "update-button";
+	updateButton.type = "button";
+	updateButton.textContent = "Update";
+	actionCell.appendChild(updateButton);
+
+	row.append(statusCell, actionCell);
+	return row;
+}
+
+function setPhotoMessage(message) {
+	const photoMessage = document.querySelector("#photo-message");
+	if (photoMessage) photoMessage.textContent = message;
+}
+
+function clearSelectedPhoto(clearMessage = true) {
+	if (selectedPhotoPreviewUrl) URL.revokeObjectURL(selectedPhotoPreviewUrl);
+	selectedPhotoFile = null;
+	selectedPhotoPreviewUrl = null;
+	const photoInput = document.querySelector("#issue-photo");
+	const preview = document.querySelector("#photo-preview");
+	const previewImage = document.querySelector("#photo-preview-image");
+	if (photoInput) photoInput.value = "";
+	if (previewImage) previewImage.removeAttribute("src");
+	if (preview) preview.hidden = true;
+	if (clearMessage) setPhotoMessage("");
+}
+
+function showSelectedPhoto(file) {
+	if (selectedPhotoPreviewUrl) URL.revokeObjectURL(selectedPhotoPreviewUrl);
+	selectedPhotoFile = file;
+	selectedPhotoPreviewUrl = URL.createObjectURL(file);
+	const preview = document.querySelector("#photo-preview");
+	const previewImage = document.querySelector("#photo-preview-image");
+	if (previewImage) previewImage.src = selectedPhotoPreviewUrl;
+	if (preview) preview.hidden = false;
+	setPhotoMessage("");
+}
+
+function validateSelectedPhoto(file) {
+	if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+		setPhotoMessage("Choose a JPEG, PNG, or WEBP image.");
+		return false;
+	}
+	if (file.size > MAX_PHOTO_SIZE_BYTES) {
+		setPhotoMessage("Choose an image that is 5 MB or smaller.");
+		return false;
+	}
+	return true;
+}
+
+async function uploadIssuePhoto(file) {
+	const formData = new FormData();
+	formData.append("file", file);
+	let response;
+	try {
+		response = await fetch(`${API_BASE_URL}/uploads/images`, {
+			method: "POST",
+			body: formData,
+		});
+	} catch {
+		const error = new Error("Photo upload failed");
+		error.isPhotoUpload = true;
+		throw error;
+	}
+	if (response.ok) return response.json();
+
+	const error = new Error("Photo upload failed");
+	error.status = response.status;
+	error.isPhotoUpload = true;
+	throw error;
+}
+
+function photoUploadErrorMessage(status) {
+	if (status === 413) return "Choose an image that is 5 MB or smaller.";
+	if (status === 422) return "Choose a valid JPEG, PNG, or WEBP image.";
+	if (status === 503) return "Photo uploads are temporarily unavailable. You can still submit the report without a photo.";
+	return "We couldn't upload that photo. Please try again or submit the report without it.";
 }
 
 function renderReports() {
 	const list = document.querySelector("#reports-list");
 	if (!list) return;
 
-	const search = document.querySelector("#report-search").value.toLowerCase();
-	const category = document.querySelector("#category-filter").value;
-	const status = document.querySelector("#status-filter").value;
+	const search = document.querySelector("#report-search")?.value.toLowerCase() || "";
+	const category = document.querySelector("#category-filter")?.value || "all";
+	const status = document.querySelector("#status-filter")?.value || "all";
 	const filteredReports = reports.filter((report) => {
 		const searchable = `${report.title} ${report.description} ${report.location}`.toLowerCase();
 		return searchable.includes(search) && (category === "all" || report.category === category) && (status === "all" || report.status === status);
 	});
 
-	list.innerHTML = filteredReports.map((report) => `<article class="report-card"><div class="report-card-top"><h3>${report.title}</h3><span class="status status-${statusClass(report.status)}">${report.status}</span></div><p>${report.description}</p><div class="report-meta"><span><strong>${report.category}</strong></span><span>${report.location}</span><span>By ${report.reporter}</span><span>${formatReportDate(report)}</span></div></article>`).join("");
-	document.querySelector("#results-count").textContent = `${filteredReports.length} report${filteredReports.length === 1 ? "" : "s"}`;
-	document.querySelector("#empty-reports").hidden = filteredReports.length !== 0;
+	const limit = Number(list.dataset.limit) || filteredReports.length;
+	const visibleReports = filteredReports.slice(0, limit);
+	list.replaceChildren(...visibleReports.map(createReportCard));
+	const count = document.querySelector("#results-count");
+	const emptyState = document.querySelector("#empty-reports");
+	if (count) {
+		count.textContent = list.dataset.limit
+			? `${visibleReports.length} recent report${visibleReports.length === 1 ? "" : "s"}`
+			: `${filteredReports.length} report${filteredReports.length === 1 ? "" : "s"}`;
+	}
+	if (emptyState) emptyState.hidden = visibleReports.length !== 0;
 }
 
 async function loadReports() {
@@ -139,7 +339,10 @@ async function loadReports() {
 
 	count.textContent = "Loading...";
 	emptyState.hidden = true;
-	list.innerHTML = "<p class=\"empty-state\">Loading reports...</p>";
+	const loadingMessage = document.createElement("p");
+	loadingMessage.className = "empty-state";
+	loadingMessage.textContent = "Loading reports...";
+	list.replaceChildren(loadingMessage);
 
 	try {
 		const response = await fetch(`${API_BASE_URL}/issues`);
@@ -148,7 +351,7 @@ async function loadReports() {
 		reports = issues.map(mapIssue);
 		renderReports();
 	} catch (error) {
-		list.innerHTML = "";
+		list.replaceChildren();
 		count.textContent = "0 reports";
 		emptyState.textContent = "Reports are unavailable right now. Please try again later.";
 		emptyState.hidden = false;
@@ -158,7 +361,7 @@ async function loadReports() {
 function renderAdminRows() {
 	const list = document.querySelector("#admin-list");
 	if (!list) return;
-	list.innerHTML = reports.map((report) => `<tr><td>${report.title}</td><td>${report.category}</td><td>${report.location}</td><td>${report.reporter}</td><td><select aria-label="Status for ${report.title}" data-issue-id="${report.id}"><option ${report.status === "Pending" ? "selected" : ""}>Pending</option><option ${report.status === "In Progress" ? "selected" : ""}>In Progress</option><option ${report.status === "Resolved" ? "selected" : ""}>Resolved</option></select></td><td><button class="update-button" type="button">Update</button></td></tr>`).join("");
+	list.replaceChildren(...reports.map(createAdminRow));
 	list.onclick = async (event) => {
 		if (!event.target.matches(".update-button")) return;
 		const button = event.target;
@@ -208,7 +411,7 @@ async function loadAdminIssues() {
 	const list = document.querySelector("#admin-list");
 	if (!list) return;
 
-	list.innerHTML = "<tr><td colspan=\"6\">Loading issues...</td></tr>";
+	list.replaceChildren(createAdminMessage("Loading issues..."));
 	try {
 		const response = await apiRequest("/issues");
 		if (!response.ok) throw new Error("Admin issues request failed");
@@ -217,7 +420,7 @@ async function loadAdminIssues() {
 		renderAdminRows();
 		updateAdminStats(issues);
 	} catch (error) {
-		list.innerHTML = "<tr><td colspan=\"6\">Issues are unavailable right now. Please try again later.</td></tr>";
+		list.replaceChildren(createAdminMessage("Issues are unavailable right now. Please try again later."));
 	}
 }
 
@@ -249,6 +452,13 @@ document.addEventListener("DOMContentLoaded", () => {
 	document.querySelectorAll(".site-nav a").forEach((link) => link.addEventListener("click", () => siteNav?.classList.remove("open")));
 
 	updateNavigationAuth();
+
+	document.querySelectorAll(".category-card[data-category]").forEach((card) => {
+		card.addEventListener("click", () => {
+			const category = document.querySelector("#category");
+			if (category) category.value = card.dataset.category;
+		});
+	});
 
 	const loginForm = document.querySelector("#login-form");
 	if (loginForm) {
@@ -302,6 +512,20 @@ document.addEventListener("DOMContentLoaded", () => {
 		loadAdminIssues();
 	}
 
+	const photoInput = document.querySelector("#issue-photo");
+	if (photoInput) {
+		photoInput.addEventListener("change", (event) => {
+			const file = event.target.files?.[0];
+			if (!file) return;
+			if (!validateSelectedPhoto(file)) {
+				clearSelectedPhoto(false);
+				return;
+			}
+			showSelectedPhoto(file);
+		});
+	}
+	document.querySelector("#remove-photo")?.addEventListener("click", clearSelectedPhoto);
+
 	document.querySelector("#issue-form")?.addEventListener("submit", async (event) => {
 		event.preventDefault();
 		const form = event.currentTarget;
@@ -317,14 +541,21 @@ document.addEventListener("DOMContentLoaded", () => {
 		};
 
 		try {
+			if (selectedPhotoFile) {
+				message.textContent = "Uploading photo...";
+				const uploadedPhoto = await uploadIssuePhoto(selectedPhotoFile);
+				payload.image_url = uploadedPhoto.image_url;
+			}
+
 			const response = await apiRequest("/issues", {
 				method: "POST",
 				body: JSON.stringify(payload)
 			});
 
 			if (response.ok) {
-				message.textContent = "Your issue was submitted successfully.";
 				form.reset();
+				clearSelectedPhoto();
+				message.textContent = "Your issue was submitted successfully.";
 				return;
 			}
 
@@ -336,6 +567,12 @@ document.addEventListener("DOMContentLoaded", () => {
 				message.textContent = "We couldn't submit your report right now. Please try again.";
 			}
 		} catch (error) {
+			if (error.isPhotoUpload) {
+				const photoError = photoUploadErrorMessage(error.status);
+				setPhotoMessage(photoError);
+				message.textContent = photoError;
+				return;
+			}
 			message.textContent = "We couldn't submit your report right now. Please try again.";
 		}
 	});
