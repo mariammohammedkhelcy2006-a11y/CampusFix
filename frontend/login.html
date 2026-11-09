@@ -10,16 +10,10 @@
 <body>
     <header class="site-header">
         <div class="container nav-wrap">
-            <a class="brand" href="/index.html" aria-label="CampusFix home">
+            <div class="brand" aria-label="CampusFix Admin">
                 <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m2 11 14-7 14 7-14 7L2 11Z"/><path d="M8 14v7c4 3 12 3 16 0v-7"/><path d="M29 12v8"/></svg></span>
-                <span>Campus<span class="brand-accent">Fix</span></span>
-            </a>
-            <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
-            <nav id="site-nav" class="site-nav" aria-label="Main navigation">
-                <a href="/index.html">Home</a>
-                <a href="/index.html#report-form">Report Issue</a>
-                <a href="/reports.html">View Reports</a>
-            </nav>
+                <span>Campus<span class="brand-accent">Fix</span> Admin</span>
+            </div>
         </div>
     </header>
 
@@ -27,12 +21,9 @@
         <section class="section login-section">
             <div class="container login-grid">
                 <div class="login-copy">
-                    <p class="eyebrow">Campus operations</p>
-                    <h1>Admin login</h1>
-                    <p>Sign in with your CampusFix admin account to manage reported issues and update their status.</p>
+                    <h1>CampusFix Admin</h1>
                 </div>
                 <form class="issue-form" id="login-form" novalidate>
-                    <div class="form-heading"><h3>Sign in</h3><p>Use the credentials issued by your CampusFix administrator.</p></div>
                     <div class="form-group"><label for="login-email">Email</label><input id="login-email" name="login-email" type="email" autocomplete="email" required></div>
                     <div class="form-group"><label for="login-password">Password</label><input id="login-password" name="login-password" type="password" autocomplete="current-password" required></div>
                     <button class="button button-primary button-full" type="submit">Sign in</button>
@@ -41,14 +32,6 @@
             </div>
         </section>
     </main>
-
-    <footer class="site-footer">
-        <div class="container footer-wrap">
-            <a class="brand brand-footer" href="/index.html"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m2 11 14-7 14 7-14 7L2 11Z"/><path d="M8 14v7c4 3 12 3 16 0v-7"/><path d="M29 12v8"/></svg></span><span>Campus<span class="brand-accent">Fix</span></span></a>
-            <p>Report it. Track it. Fix it.</p>
-            <span class="footer-copy">&copy; 2026 CampusFix</span>
-        </div>
-    </footer>
     <script src="/script.js"></script>
 </body>
 </html>

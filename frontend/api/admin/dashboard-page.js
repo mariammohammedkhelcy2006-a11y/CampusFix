@@ -14,7 +14,7 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
         <div class="container nav-wrap">
             <a class="brand" href="/index.html" aria-label="CampusFix home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m2 11 14-7 14 7-14 7L2 11Z"/><path d="M8 14v7c4 3 12 3 16 0v-7"/><path d="M29 12v8"/></svg></span><span>Campus<span class="brand-accent">Fix</span></span></a>
             <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav">Menu</button>
-            <nav id="site-nav" class="site-nav" aria-label="Main navigation"><a href="/index.html">Home</a><a href="/index.html#report-form">Report Issue</a><a href="/reports.html">View Reports</a><button class="button button-secondary" id="admin-logout" type="button">Log out</button></nav>
+            <nav id="site-nav" class="site-nav" aria-label="Admin navigation"><a class="active" href="/admin.html">Dashboard</a><a href="/reports.html">View Reports</a><a href="#manage-reports">Manage Reports</a><a href="/index.html">Visit Homepage</a><button class="button button-secondary" id="admin-logout" type="button">Logout</button></nav>
         </div>
     </header>
     <main class="admin-page">
@@ -26,7 +26,7 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
                 <article class="stat-card stat-progress"><span class="stat-label">In progress</span><strong id="stat-progress">0</strong><small>Currently being handled</small></article>
                 <article class="stat-card stat-resolved"><span class="stat-label">Resolved</span><strong id="stat-resolved">0</strong><small>Closed this semester</small></article>
             </div>
-            <div class="admin-table-wrap">
+            <div class="admin-table-wrap" id="manage-reports">
                 <div class="results-heading"><div><p class="eyebrow">Action queue</p><h2>Reported issues</h2></div><button class="button button-secondary" id="refresh-admin" type="button">Refresh reports</button></div>
                 <div class="filter-bar">
                     <label class="filter-field" for="admin-category-filter">Category

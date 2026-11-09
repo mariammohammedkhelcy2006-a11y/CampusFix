@@ -1,4 +1,6 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const { afterEach, test } = require("node:test");
 
 const adminLogin = require("../api/admin/login");
@@ -53,6 +55,25 @@ test("Vercel routes public dashboard URLs through the protected handler", () => 
 	assert.equal(rewrites.get("/admin.html"), "/api/admin/dashboard-page");
 	assert.equal(rewrites.get("/admin.html/"), "/api/admin/dashboard-page");
 	assert.equal(rewrites.get("/api/admin/dashboard"), "/api/admin/dashboard-page");
+});
+
+test("admin login page contains no navigation before authentication", () => {
+	const loginHtml = fs.readFileSync(path.join(__dirname, "..", "login.html"), "utf8");
+
+	assert.match(loginHtml, /Campus<span class="brand-accent">Fix<\/span> Admin/);
+	assert.match(loginHtml, /id="login-form"/);
+	assert.match(loginHtml, /id="login-email"/);
+	assert.match(loginHtml, /id="login-password"/);
+	assert.match(loginHtml, /id="login-message"/);
+	assert.doesNotMatch(loginHtml, /<nav\b|<a\b|menu-toggle|Dashboard|Report Issue|View Reports|Manage Reports|Visit Homepage|Logout|View Homepage/i);
+});
+
+test("public student homepage navigation remains available", () => {
+	const homepageHtml = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+
+	assert.match(homepageHtml, /<nav\b[^>]*id="site-nav"/);
+	assert.match(homepageHtml, /href="#report-form">Report Issue<\/a>/);
+	assert.match(homepageHtml, /href="reports\.html">View Reports<\/a>/);
 });
 
 test("admin login establishes an HttpOnly Secure cookie without returning the JWT", async () => {
@@ -117,6 +138,7 @@ test("direct dashboard request without a valid cookie redirects before HTML is s
 	assert.equal(response.statusCode, 302);
 	assert.equal(response.headers.location, "/control-panel");
 	assert.doesNotMatch(response.body, /Admin dashboard/);
+	assert.doesNotMatch(response.body, /admin-logout|Manage Reports|Visit Homepage/);
 });
 
 test("admin report APIs reject missing sessions before calling the backend", async () => {
@@ -161,6 +183,12 @@ test("authenticated admin receives no-store dashboard HTML", async () => {
 	assert.equal(response.statusCode, 200);
 	assert.match(response.headers["content-type"], /text\/html/);
 	assert.match(response.headers["cache-control"], /private, no-store/);
+	assert.match(response.body, /href="\/admin\.html">Dashboard<\/a>/);
+	assert.match(response.body, /href="\/reports\.html">View Reports<\/a>/);
+	assert.match(response.body, /href="#manage-reports">Manage Reports<\/a>/);
+	assert.match(response.body, /href="\/index\.html">Visit Homepage<\/a>/);
+	assert.match(response.body, /<button[^>]*id="admin-logout"[^>]*>Logout<\/button>/);
+	assert.match(response.body, /id="manage-reports"/);
 	assert.match(response.body, /admin-dashboard\.js/);
 });
 
