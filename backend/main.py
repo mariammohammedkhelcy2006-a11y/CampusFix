@@ -46,6 +46,8 @@ app.add_middleware(
         "http://127.0.0.1:8001",
         "http://127.0.0.1:8080",
         "https://campus-fix-kelcy1.vercel.app",
+        "https://campusfix-lemon-nu.vercel.app",
+        "https://campusfix-mariammohammedkelcy2006-1731.vercel.app",
         "null",
     ],
     allow_credentials=False,
