@@ -167,17 +167,60 @@ class IssueImageIntegrationTests(unittest.TestCase):
 
     def test_image_upload_http_endpoint_accepts_valid_image(self):
         expected_url = "https://res.cloudinary.com/campusfix-test/image/upload/v1/campusfix/issues/generated.jpg"
+        image_bytes = make_image_bytes("JPEG")
         with mock.patch.object(main.database, "initialize_database"):
             with mock.patch.object(storage, "upload_issue_image", return_value=expected_url) as upload:
                 with TestClient(main.app) as client:
                     response = client.post(
                         "/uploads/images",
-                        files={"file": ("untrusted.jpg", make_image_bytes("JPEG"), "image/jpeg")},
+                        files={"file": ("untrusted.jpg", image_bytes, "image/jpeg")},
                     )
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json(), {"image_url": expected_url})
         upload.assert_called_once()
+        normalized_bytes, image_format = upload.call_args.args
+        expected_bytes, expected_format = storage.validate_and_normalize_image(image_bytes)
+        self.assertEqual(normalized_bytes, expected_bytes)
+        self.assertEqual(image_format, expected_format)
+
+    def test_image_upload_http_endpoint_returns_safe_cloudinary_failure(self):
+        image_bytes = make_image_bytes("PNG")
+        with mock.patch.object(main.database, "initialize_database"):
+            with mock.patch.object(
+                storage,
+                "upload_issue_image",
+                side_effect=storage.ImageStorageError("provider failure with private details"),
+            ):
+                with TestClient(main.app) as client:
+                    response = client.post(
+                        "/uploads/images",
+                        files={"file": ("photo.png", image_bytes, "image/png")},
+                    )
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json(), {"detail": "Image upload failed"})
+
+    def test_image_upload_http_endpoint_rejects_oversized_and_invalid_images(self):
+        with mock.patch.object(main.database, "initialize_database"):
+            with TestClient(main.app) as client:
+                oversized = client.post(
+                    "/uploads/images",
+                    files={
+                        "file": (
+                            "large.jpg",
+                            b"0" * (storage.MAX_IMAGE_BYTES + 1),
+                            "image/jpeg",
+                        )
+                    },
+                )
+                invalid = client.post(
+                    "/uploads/images",
+                    files={"file": ("photo.gif", make_image_bytes("GIF"), "image/gif")},
+                )
+
+        self.assertEqual(oversized.status_code, 413)
+        self.assertEqual(invalid.status_code, 422)
 
     def test_non_cloudinary_image_url_is_rejected(self):
         with mock.patch.dict(os.environ, {"CLOUDINARY_CLOUD_NAME": "campusfix-test"}, clear=False):
@@ -390,6 +433,33 @@ class CloudinaryStorageTests(unittest.TestCase):
                 ):
                     with self.assertRaises(storage.ImageStorageError):
                         storage.upload_issue_image(make_image_bytes("JPEG"), "jpg")
+
+    def test_cloudinary_malformed_response_is_reported_as_storage_error(self):
+        credentials = {
+            "CLOUDINARY_CLOUD_NAME": "campusfix-test",
+            "CLOUDINARY_API_KEY": "test-api-key",
+            "CLOUDINARY_API_SECRET": "test-api-secret",
+        }
+        with mock.patch.dict(os.environ, credentials, clear=False):
+            with mock.patch.object(storage.cloudinary, "config"):
+                with mock.patch.object(storage.cloudinary.uploader, "upload", return_value=None):
+                    with self.assertRaises(storage.ImageStorageError):
+                        storage.upload_issue_image(make_image_bytes("JPEG"), "jpg")
+
+    def test_cloudinary_configuration_value_error_is_reported_as_storage_error(self):
+        credentials = {
+            "CLOUDINARY_CLOUD_NAME": "campusfix-test",
+            "CLOUDINARY_API_KEY": "test-api-key",
+            "CLOUDINARY_API_SECRET": "test-api-secret",
+        }
+        with mock.patch.dict(os.environ, credentials, clear=False):
+            with mock.patch.object(
+                storage.cloudinary,
+                "config",
+                side_effect=ValueError("provider configuration details"),
+            ):
+                with self.assertRaises(storage.ImageStorageError):
+                    storage.upload_issue_image(make_image_bytes("JPEG"), "jpg")
 
     def test_delete_uses_only_managed_public_ids(self):
         image_url = "https://res.cloudinary.com/campusfix-test/image/upload/v1/campusfix/issues/0123456789abcdef0123456789abcdef.jpg"

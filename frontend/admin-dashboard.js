@@ -185,9 +185,9 @@ async function deleteReport(button) {
 
 document.addEventListener("DOMContentLoaded", () => {
 	const menuToggle = document.querySelector(".menu-toggle");
-	const siteNav = document.querySelector(".site-nav");
+	const sidebar = document.querySelector(".admin-sidebar");
 	menuToggle.addEventListener("click", () => {
-		const isOpen = siteNav.classList.toggle("open");
+		const isOpen = sidebar.classList.toggle("open");
 		menuToggle.setAttribute("aria-expanded", String(isOpen));
 	});
 	document.querySelector("#refresh-admin").addEventListener("click", loadAdminReports);

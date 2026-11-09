@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { afterEach, test } = require("node:test");
+const vm = require("node:vm");
 
 const adminLogin = require("../api/admin/login");
 const adminLogout = require("../api/admin/logout");
@@ -47,6 +48,71 @@ function sessionCookie(token = "signed-admin-token") {
 	return `${COOKIE_NAME}=${encodeURIComponent(token)}`;
 }
 
+function makeDashboardBrowser(fetchImplementation) {
+	const listeners = {};
+	const redirects = [];
+	const elements = new Map();
+	const createElement = () => ({
+		children: [],
+		dataset: {},
+		attributes: {},
+		addEventListener(type, callback) {
+			this.listeners = this.listeners || {};
+			this.listeners[type] = callback;
+		},
+		appendChild(child) {
+			this.children.push(child);
+		},
+		classList: {
+			toggle(className) {
+				this.open = !this.open;
+				return this.open;
+			},
+		},
+		replaceChildren(...children) {
+			this.children = children;
+		},
+		setAttribute(name, value) {
+			this.attributes[name] = value;
+		},
+	});
+	const selectors = [
+		".menu-toggle",
+		".admin-sidebar",
+		"#refresh-admin",
+		"#admin-category-filter",
+		"#admin-status-filter",
+		"#admin-list",
+		"#admin-logout",
+		"#admin-message",
+		"#stat-total",
+		"#stat-pending",
+		"#stat-progress",
+		"#stat-resolved",
+	];
+	for (const selector of selectors) elements.set(selector, createElement());
+	elements.get("#admin-category-filter").value = "all";
+	elements.get("#admin-status-filter").value = "all";
+
+	const document = {
+		addEventListener(type, callback) {
+			listeners[type] = callback;
+		},
+		createElement,
+		querySelector(selector) {
+			return elements.get(selector);
+		},
+	};
+	const window = { location: { replace: (url) => redirects.push(url) } };
+	const dashboardScript = fs.readFileSync(
+		path.join(__dirname, "..", "admin-dashboard.js"),
+		"utf8",
+	);
+	vm.runInNewContext(dashboardScript, { document, fetch: fetchImplementation, window, URL, Date });
+
+	return { document, elements, listeners, redirects };
+}
+
 test("Vercel routes public dashboard URLs through the protected handler", () => {
 	const rewrites = new Map(vercelConfig.rewrites.map(({ source, destination }) => [source, destination]));
 
@@ -57,15 +123,22 @@ test("Vercel routes public dashboard URLs through the protected handler", () => 
 	assert.equal(rewrites.get("/api/admin/dashboard"), "/api/admin/dashboard-page");
 });
 
-test("admin login page contains no navigation before authentication", () => {
-	const loginHtml = fs.readFileSync(path.join(__dirname, "..", "login.html"), "utf8");
+test("the /control-panel response contains no navigation before authentication", () => {
+	const controlPanelRewrite = vercelConfig.rewrites.find(({ source }) => source === "/control-panel");
+	assert.ok(controlPanelRewrite);
+	assert.equal(controlPanelRewrite.destination, "/login.html");
 
-	assert.match(loginHtml, /Campus<span class="brand-accent">Fix<\/span> Admin/);
-	assert.match(loginHtml, /id="login-form"/);
-	assert.match(loginHtml, /id="login-email"/);
-	assert.match(loginHtml, /id="login-password"/);
-	assert.match(loginHtml, /id="login-message"/);
-	assert.doesNotMatch(loginHtml, /<nav\b|<a\b|menu-toggle|Dashboard|Report Issue|View Reports|Manage Reports|Visit Homepage|Logout|View Homepage/i);
+	const controlPanelHtml = fs.readFileSync(
+		path.join(__dirname, "..", controlPanelRewrite.destination.slice(1)),
+		"utf8",
+	);
+
+	assert.match(controlPanelHtml, /Campus<span class="brand-accent">Fix<\/span> Admin/);
+	assert.match(controlPanelHtml, /id="login-form"/);
+	assert.match(controlPanelHtml, /id="login-email"/);
+	assert.match(controlPanelHtml, /id="login-password"/);
+	assert.match(controlPanelHtml, /id="login-message"/);
+	assert.doesNotMatch(controlPanelHtml, /<nav\b|<a\b|menu-toggle|Homepage|Reports|Manage Reports|Logout/i);
 });
 
 test("public student homepage navigation remains available", () => {
@@ -183,13 +256,49 @@ test("authenticated admin receives no-store dashboard HTML", async () => {
 	assert.equal(response.statusCode, 200);
 	assert.match(response.headers["content-type"], /text\/html/);
 	assert.match(response.headers["cache-control"], /private, no-store/);
+	assert.match(response.body, /<link rel="stylesheet" href="\/style\.css">/);
+	assert.match(response.body, /<script src="\/admin-dashboard\.js"><\/script>/);
+	assert.doesNotMatch(response.body, /class="site-header"|class="site-nav"/);
 	assert.match(response.body, /href="\/admin\.html">Dashboard<\/a>/);
 	assert.match(response.body, /href="\/reports\.html">View Reports<\/a>/);
 	assert.match(response.body, /href="#manage-reports">Manage Reports<\/a>/);
 	assert.match(response.body, /href="\/index\.html">Visit Homepage<\/a>/);
+	assert.match(response.body, /<aside class="admin-sidebar" id="admin-sidebar">[\s\S]*?Dashboard[\s\S]*?Visit Homepage[\s\S]*?View Reports[\s\S]*?Manage Reports[\s\S]*?<div class="admin-sidebar-bottom">\s*<button[^>]*id="admin-logout"[^>]*>Logout<\/button>/);
+	assert.match(response.body, /<div class="admin-main">\s*<main class="admin-page">/);
 	assert.match(response.body, /<button[^>]*id="admin-logout"[^>]*>Logout<\/button>/);
 	assert.match(response.body, /id="manage-reports"/);
 	assert.match(response.body, /admin-dashboard\.js/);
+});
+
+test("admin sidebar CSS provides desktop positioning and mobile collapse rules", () => {
+	const stylesheet = fs.readFileSync(path.join(__dirname, "..", "style.css"), "utf8");
+	const dashboardScript = fs.readFileSync(path.join(__dirname, "..", "admin-dashboard.js"), "utf8");
+
+	assert.match(stylesheet, /\.admin-sidebar\s*\{[^}]*position:\s*fixed/);
+	assert.match(stylesheet, /\.admin-main\s*\{[^}]*margin-left:\s*264px/);
+	assert.match(stylesheet, /@media\s*\(max-width:\s*800px\)\s*\{[\s\S]*?\.admin-sidebar\s*\{[^}]*transform:\s*translateX\(-105%\)/);
+	assert.match(stylesheet, /\.admin-sidebar\.open\s*\{\s*transform:\s*translateX\(0\)/);
+	assert.match(stylesheet, /\.admin-main\s*\{\s*margin-left:\s*0/);
+	assert.match(dashboardScript, /document\.querySelector\("\.admin-sidebar"\)/);
+	assert.match(dashboardScript, /sidebar\.classList\.toggle\("open"\)/);
+});
+
+test("admin menu button collapses and expands the sidebar", async () => {
+	const browser = makeDashboardBrowser(async (url) => {
+		if (url === "/api/admin/issues") return { status: 200, ok: true, json: async () => [] };
+		throw new Error(`Unexpected request: ${url}`);
+	});
+	browser.listeners.DOMContentLoaded();
+	await new Promise((resolve) => setImmediate(resolve));
+
+	const menuToggle = browser.elements.get(".menu-toggle");
+	const sidebar = browser.elements.get(".admin-sidebar");
+	menuToggle.listeners.click();
+	assert.equal(sidebar.classList.open, true);
+	assert.equal(menuToggle.attributes["aria-expanded"], "true");
+	menuToggle.listeners.click();
+	assert.equal(sidebar.classList.open, false);
+	assert.equal(menuToggle.attributes["aria-expanded"], "false");
 });
 
 test("report viewing proxies to backend only after admin session validation", async () => {
@@ -251,8 +360,55 @@ test("logout revokes the backend token before clearing the cookie", async () => 
 	await adminLogout(makeRequest({ method: "POST", cookie: sessionCookie() }), response);
 
 	assert.equal(response.statusCode, 204);
+	assert.match(response.headers["set-cookie"], /HttpOnly/);
+	assert.match(response.headers["set-cookie"], /Secure/);
 	assert.match(response.headers["set-cookie"], /Max-Age=0/);
 	assert.ok(calls.some(({ url }) => url.endsWith("/auth/logout")));
+
+	global.fetch = async () => {
+		throw new Error("Backend must not be called after the session cookie is cleared");
+	};
+	const dashboardResponse = makeResponse();
+	await adminDashboard(makeRequest(), dashboardResponse);
+	assert.equal(dashboardResponse.statusCode, 302);
+	assert.equal(dashboardResponse.headers.location, "/control-panel");
+	assert.doesNotMatch(dashboardResponse.body, /Admin dashboard/);
+});
+
+test("dashboard Logout button calls the secure endpoint and redirects after success", async () => {
+	const fetchCalls = [];
+	const browser = makeDashboardBrowser(async (url, options) => {
+		fetchCalls.push({ url, options });
+		if (url === "/api/admin/issues") {
+			return { status: 200, ok: true, json: async () => [] };
+		}
+		if (url === "/api/admin/logout") return { status: 204, ok: true };
+		throw new Error(`Unexpected request: ${url}`);
+	});
+	browser.listeners.DOMContentLoaded();
+	await new Promise((resolve) => setImmediate(resolve));
+
+	await browser.elements.get("#admin-logout").listeners.click();
+
+	assert.equal(fetchCalls.find(({ url }) => url === "/api/admin/logout").options.method, "POST");
+	assert.deepEqual(browser.redirects, ["/control-panel"]);
+});
+
+test("dashboard Logout button remains usable and does not redirect when logout fails", async () => {
+	const browser = makeDashboardBrowser(async (url) => {
+		if (url === "/api/admin/issues") return { status: 200, ok: true, json: async () => [] };
+		if (url === "/api/admin/logout") return { status: 503, ok: false };
+		throw new Error(`Unexpected request: ${url}`);
+	});
+	browser.listeners.DOMContentLoaded();
+	await new Promise((resolve) => setImmediate(resolve));
+
+	const button = browser.elements.get("#admin-logout");
+	await button.listeners.click();
+
+	assert.equal(button.disabled, false);
+	assert.equal(browser.redirects.length, 0);
+	assert.match(browser.elements.get("#admin-message").textContent, /logout could not be confirmed/i);
 });
 
 test("admin mutation requests reject cross-origin requests", async () => {

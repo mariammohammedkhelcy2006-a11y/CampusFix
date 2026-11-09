@@ -9,15 +9,25 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
     <title>Admin Dashboard | CampusFix</title>
     <link rel="stylesheet" href="/style.css">
 </head>
-<body>
-    <header class="site-header">
-        <div class="container nav-wrap">
-            <a class="brand" href="/index.html" aria-label="CampusFix home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m2 11 14-7 14 7-14 7L2 11Z"/><path d="M8 14v7c4 3 12 3 16 0v-7"/><path d="M29 12v8"/></svg></span><span>Campus<span class="brand-accent">Fix</span></span></a>
-            <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav">Menu</button>
-            <nav id="site-nav" class="site-nav" aria-label="Admin navigation"><a class="active" href="/admin.html">Dashboard</a><a href="/reports.html">View Reports</a><a href="#manage-reports">Manage Reports</a><a href="/index.html">Visit Homepage</a><button class="button button-secondary" id="admin-logout" type="button">Logout</button></nav>
-        </div>
+<body class="admin-dashboard">
+    <header class="admin-mobile-header">
+        <a class="brand" href="/admin.html" aria-label="CampusFix dashboard"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m2 11 14-7 14 7-14 7L2 11Z"/><path d="M8 14v7c4 3 12 3 16 0v-7"/><path d="M29 12v8"/></svg></span><span>Campus<span class="brand-accent">Fix</span></span></a>
+        <button class="menu-toggle" type="button" aria-label="Toggle admin sidebar" aria-expanded="false" aria-controls="admin-sidebar">Menu</button>
     </header>
-    <main class="admin-page">
+    <aside class="admin-sidebar" id="admin-sidebar">
+        <a class="brand admin-sidebar-brand" href="/admin.html" aria-label="CampusFix dashboard"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m2 11 14-7 14 7-14 7L2 11Z"/><path d="M8 14v7c4 3 12 3 16 0v-7"/><path d="M29 12v8"/></svg></span><span>Campus<span class="brand-accent">Fix</span></span></a>
+        <nav id="site-nav" class="admin-sidebar-nav" aria-label="Admin navigation">
+            <a class="admin-sidebar-link active" href="/admin.html">Dashboard</a>
+            <a class="admin-sidebar-link" href="/index.html">Visit Homepage</a>
+            <a class="admin-sidebar-link" href="/reports.html">View Reports</a>
+            <a class="admin-sidebar-link" href="#manage-reports">Manage Reports</a>
+        </nav>
+        <div class="admin-sidebar-bottom">
+            <button class="admin-sidebar-logout" id="admin-logout" type="button">Logout</button>
+        </div>
+    </aside>
+    <div class="admin-main">
+        <main class="admin-page">
         <section class="page-intro"><div class="container"><p class="eyebrow">Campus operations</p><h1>Admin dashboard</h1><p>Keep track of incoming issues and help move every report toward resolution.</p></div></section>
         <section class="section admin-section"><div class="container">
             <div class="stats-grid">
@@ -40,8 +50,9 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
                 <div class="table-scroll"><table class="admin-table"><thead><tr><th>Issue</th><th>Description</th><th>Category</th><th>Location</th><th>Reported by</th><th>Date</th><th>Status</th><th>Action</th></tr></thead><tbody id="admin-list"></tbody></table></div>
             </div>
         </div></section>
-    </main>
-    <footer class="site-footer"><div class="container footer-wrap"><a class="brand brand-footer" href="/index.html"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m2 11 14-7 14 7-14 7L2 11Z"/><path d="M8 14v7c4 3 12 3 16 0v-7"/><path d="M29 12v8"/></svg></span><span>Campus<span class="brand-accent">Fix</span></span></a><p>Report it. Track it. Fix it.</p><span class="footer-copy">&copy; 2025 CampusFix</span></div></footer>
+        </main>
+        <footer class="site-footer"><div class="container footer-wrap"><a class="brand brand-footer" href="/index.html"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m2 11 14-7 14 7-14 7L2 11Z"/><path d="M8 14v7c4 3 12 3 16 0v-7"/><path d="M29 12v8"/></svg></span><span>Campus<span class="brand-accent">Fix</span></span></a><p>Report it. Track it. Fix it.</p><span class="footer-copy">&copy; 2026 CampusFix</span></div></footer>
+    </div>
     <script src="/admin-dashboard.js"></script>
 </body>
 </html>`;

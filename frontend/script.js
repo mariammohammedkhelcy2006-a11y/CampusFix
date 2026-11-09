@@ -644,12 +644,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 			location: document.querySelector("#location").value.trim(),
 			reporter_name: document.querySelector("#reporter").value.trim()
 		};
+		let photoUploadWarning = "";
 
 		try {
 			if (selectedPhotoFile) {
 				message.textContent = "Uploading photo...";
-				const uploadedPhoto = await uploadIssuePhoto(selectedPhotoFile);
-				payload.image_url = uploadedPhoto.image_url;
+				try {
+					const uploadedPhoto = await uploadIssuePhoto(selectedPhotoFile);
+					payload.image_url = uploadedPhoto.image_url;
+				} catch (error) {
+					photoUploadWarning = photoUploadErrorMessage(error.status);
+					setPhotoMessage(photoUploadWarning);
+				}
 			}
 
 			const response = await apiRequest("/issues", {
@@ -660,7 +666,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 			if (response.ok) {
 				form.reset();
 				clearSelectedPhoto();
-				message.textContent = "Your issue was submitted successfully.";
+				if (photoUploadWarning) {
+					message.textContent = "Your issue was submitted successfully without the photo.";
+					setPhotoMessage(photoUploadWarning);
+				} else {
+					message.textContent = "Your issue was submitted successfully.";
+				}
 				return;
 			}
 

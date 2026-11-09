@@ -1,5 +1,6 @@
 """Validation and Cloudinary storage for CampusFix issue photographs."""
 
+import logging
 import os
 import re
 from io import BytesIO
@@ -15,6 +16,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_IMAGE_PIXELS = 20_000_000
 IMAGE_FORMATS = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}
+logger = logging.getLogger(__name__)
 
 
 class ImageValidationError(ValueError):
@@ -84,14 +86,13 @@ def validate_and_normalize_image(image_bytes: bytes) -> tuple[bytes, str]:
 def upload_issue_image(image_bytes: bytes, image_format: str) -> str:
     """Upload a validated image to Cloudinary and return only its HTTPS URL."""
     cloud_name, api_key, api_secret = _cloudinary_credentials()
-    cloudinary.config(
-        cloud_name=cloud_name,
-        api_key=api_key,
-        api_secret=api_secret,
-        secure=True,
-    )
-
     try:
+        cloudinary.config(
+            cloud_name=cloud_name,
+            api_key=api_key,
+            api_secret=api_secret,
+            secure=True,
+        )
         upload_result = cloudinary.uploader.upload(
             BytesIO(image_bytes),
             resource_type="image",
@@ -102,11 +103,17 @@ def upload_issue_image(image_bytes: bytes, image_format: str) -> str:
             use_filename=False,
             format=image_format,
         )
-    except (CloudinaryError, OSError) as error:
+    except (CloudinaryError, OSError, ValueError) as error:
+        logger.warning("Cloudinary image upload failed (%s)", type(error).__name__)
         raise ImageStorageError("Image upload failed") from error
+
+    if not isinstance(upload_result, dict):
+        logger.warning("Cloudinary image upload returned an invalid response")
+        raise ImageStorageError("Image storage returned an invalid response")
 
     image_url = upload_result.get("secure_url")
     if not isinstance(image_url, str) or not is_cloudinary_image_url(image_url):
+        logger.warning("Cloudinary image upload returned an invalid delivery URL")
         raise ImageStorageError("Image storage returned an invalid URL")
     return image_url
 

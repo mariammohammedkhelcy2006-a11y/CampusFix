@@ -971,3 +971,125 @@ h1, h2, h3 { color: #173a68; }
 	object-fit: cover;
 	object-position: center;
 }
+
+.admin-dashboard {
+	min-height: 100vh;
+	color: #294766;
+	background: #f3f7fc;
+}
+.admin-dashboard::before, .admin-dashboard::after { display: none; }
+.admin-mobile-header { display: none; }
+.admin-sidebar {
+	position: fixed;
+	z-index: 40;
+	inset: 0 auto 0 0;
+	display: flex;
+	width: 264px;
+	flex-direction: column;
+	padding: 25px 18px 18px;
+	border-right: 1px solid #e1eaf4;
+	background: #fff;
+	box-shadow: 8px 0 28px rgba(37, 83, 132, .06);
+}
+.admin-sidebar-brand { padding: 0 10px; color: #173a68; }
+.admin-sidebar-nav { display: grid; gap: 7px; margin-top: 40px; }
+.admin-sidebar-link {
+	display: flex;
+	min-height: 46px;
+	align-items: center;
+	padding: 0 13px;
+	border-radius: 8px;
+	color: #526d8b;
+	font-size: .88rem;
+	font-weight: 650;
+	transition: color .18s, background .18s;
+}
+.admin-sidebar-link:hover, .admin-sidebar-link.active {
+	color: #1265c7;
+	background: #eaf3ff;
+}
+.admin-sidebar-bottom { margin-top: auto; padding-top: 18px; border-top: 1px solid #e7eef6; }
+.admin-sidebar-logout {
+	width: 100%;
+	min-height: 44px;
+	padding: 0 13px;
+	border: 1px solid #dce6f1;
+	border-radius: 8px;
+	color: #416184;
+	background: #fff;
+	cursor: pointer;
+	font-size: .88rem;
+	font-weight: 650;
+	text-align: left;
+	transition: color .18s, border-color .18s, background .18s;
+}
+.admin-sidebar-logout:hover { border-color: #b7d2ef; color: #145fae; background: #f4f8fd; }
+.admin-main { min-height: 100vh; margin-left: 264px; }
+.admin-main .admin-page { min-height: calc(100vh - 83px); }
+.admin-dashboard .admin-page .page-intro { padding: 45px 0 34px; background: transparent; }
+.admin-dashboard .admin-page .page-intro .container,
+.admin-dashboard .admin-page .admin-section > .container { width: min(100% - 56px, 1320px); }
+.admin-dashboard .admin-page .page-intro h1 { margin-bottom: 10px; color: #173a68; font-size: clamp(2rem, 3vw, 2.7rem); }
+.admin-dashboard .admin-page .page-intro p:last-child { color: #617895; }
+.admin-dashboard .admin-page .admin-section { padding: 20px 0 52px; background: transparent; }
+.admin-dashboard .admin-page .stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.admin-dashboard .admin-page .admin-table-wrap { margin-top: 28px; }
+.admin-dashboard .site-footer { margin-top: auto; }
+.admin-dashboard .footer-wrap { min-height: 82px; }
+
+@media (max-width: 800px) {
+	.admin-mobile-header {
+		position: sticky;
+		z-index: 35;
+		top: 0;
+		display: flex;
+		min-height: 64px;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0 20px;
+		border-bottom: 1px solid #e1eaf4;
+		background: rgba(255, 255, 255, .96);
+		box-shadow: 0 5px 18px rgba(37, 83, 132, .07);
+		backdrop-filter: blur(14px);
+	}
+	.admin-mobile-header .brand { color: #173a68; font-size: 1.08rem; }
+	.admin-dashboard .menu-toggle {
+		display: inline-flex;
+		min-height: 38px;
+		align-items: center;
+		padding: 0 12px;
+		border: 1px solid #d5e2f0;
+		border-radius: 7px;
+		color: #245681;
+		background: #fff;
+		font-size: .82rem;
+	}
+	.admin-dashboard .menu-toggle::before { content: none; }
+	.admin-sidebar {
+		z-index: 45;
+		inset: 64px auto 0 0;
+		width: min(290px, 86vw);
+		padding-top: 22px;
+		box-shadow: 12px 0 32px rgba(29, 68, 111, .14);
+		transform: translateX(-105%);
+		transition: transform .22s ease;
+	}
+	.admin-sidebar.open { transform: translateX(0); }
+	.admin-main { margin-left: 0; }
+	.admin-main .admin-page { min-height: calc(100vh - 64px); }
+	.admin-dashboard .admin-page .page-intro { padding: 32px 0 22px; }
+	.admin-dashboard .admin-page .page-intro .container,
+	.admin-dashboard .admin-page .admin-section > .container { width: min(100% - 34px, 640px); }
+	.admin-dashboard .admin-page .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.admin-dashboard .admin-page .admin-section { padding-top: 12px; }
+	.admin-dashboard .admin-page .admin-table-wrap { margin-top: 22px; padding: 18px; }
+}
+
+@media (max-width: 500px) {
+	.admin-mobile-header { padding: 0 16px; }
+	.admin-dashboard .admin-page .page-intro .container,
+	.admin-dashboard .admin-page .admin-section > .container { width: calc(100% - 32px); }
+	.admin-dashboard .admin-page .stats-grid { grid-template-columns: 1fr; }
+	.admin-dashboard .admin-page .results-heading { align-items: flex-start; gap: 14px; flex-direction: column; }
+	.admin-dashboard .admin-page .results-heading .button { width: 100%; }
+}

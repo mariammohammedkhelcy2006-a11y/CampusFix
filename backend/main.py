@@ -132,6 +132,7 @@ async def upload_image(file: UploadFile = File(...)) -> ImageUploadResponse:
     except storage.ImageValidationError as error:
         raise HTTPException(status_code=422, detail=str(error))
     except storage.ImageStorageConfigurationError:
+        logger.warning("Image upload unavailable because Cloudinary is not configured")
         raise HTTPException(status_code=503, detail="Image uploads are not configured")
     except storage.ImageStorageError:
         raise HTTPException(status_code=502, detail="Image upload failed")
